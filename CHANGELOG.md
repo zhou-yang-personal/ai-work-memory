@@ -2,6 +2,22 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.2] - 2026-08-26
+
+### Added
+
+- Candidate Rule review form for Rule name, Scope, and editable content.
+- Explicit opt-in for retaining bounded nearby AI evidence.
+- Exact same-name and same-Scope Rule detection before saving.
+- Create New and Update Existing actions with immutable revision history.
+- Atomic persistence of the Source Event, Rule, and Revision.
+- Unit tests for candidate validation, canonical keys, evidence retention, creation, and revision updates.
+
+### Changed
+
+- Captures now open directly in the reviewed Rule workflow instead of a preview-only card.
+- Version advanced to `0.1.2` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.1] - 2026-08-25
 
 ### Added

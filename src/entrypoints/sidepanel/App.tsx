@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { PendingCapture } from '../../core/capture/model';
 import { APP_VERSION } from '../../core/version';
+import { CandidateRuleReview } from './CandidateRuleReview';
 
 type Page = 'Build Context' | 'Library' | 'Settings';
 
@@ -11,6 +12,7 @@ export function App() {
   const [page, setPage] = useState<Page>('Build Context');
   const [serviceReady, setServiceReady] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<PendingCapture>();
+  const [saveNotice, setSaveNotice] = useState<string>();
 
   useEffect(() => {
     browser.runtime
@@ -37,6 +39,7 @@ export function App() {
         'type' in message &&
         message.type === 'AIWM_PENDING_CAPTURE_CHANGED'
       ) {
+        setPage('Build Context');
         setPendingCapture(
           'payload' in message
             ? (message.payload as PendingCapture | undefined)
@@ -55,12 +58,17 @@ export function App() {
     });
   };
 
+  const handleRuleSaved = (message: string) => {
+    setPendingCapture(undefined);
+    setSaveNotice(message);
+  };
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
           <p className="eyebrow">AI Work Memory</p>
-          <h1>{page}</h1>
+          <h1>{pendingCapture ? 'Save as Rule' : page}</h1>
         </div>
         <span className="version">v{APP_VERSION}</span>
       </header>
@@ -79,30 +87,21 @@ export function App() {
       </nav>
 
       <section className="workspace">
-        {pendingCapture && (
-          <aside className="capture-card" aria-live="polite">
-            <div className="capture-card-header">
-              <div>
-                <p className="capture-kicker">Captured from {pendingCapture.platform}</p>
-                <h2>Selection ready for review</h2>
-              </div>
-              <button className="text-button" onClick={clearCapture} type="button">
-                Dismiss
-              </button>
-            </div>
-            <blockquote>{pendingCapture.selectedText}</blockquote>
-            <p className="capture-meta">
-              {pendingCapture.channel === 'context-menu'
-                ? 'Browser context menu'
-                : 'Page capture action'}
-              {' · '}
-              {new Date(pendingCapture.capturedAt).toLocaleString()}
-            </p>
-            <p className="capture-next">
-              Candidate editing and Save Rule arrive in Phase 4. This capture stays local.
-            </p>
-          </aside>
+        {saveNotice && !pendingCapture && (
+          <p className="save-notice" aria-live="polite">
+            {saveNotice}
+          </p>
         )}
+
+        {pendingCapture ? (
+          <CandidateRuleReview
+            capture={pendingCapture}
+            key={pendingCapture.id}
+            onCancel={clearCapture}
+            onSaved={handleRuleSaved}
+          />
+        ) : (
+          <>
 
         {page === 'Build Context' && (
           <>
@@ -118,14 +117,14 @@ export function App() {
             />
 
             <p className="phase-note">
-              Phase 3 Capture is ready. Candidate review and Rule creation arrive
-              in Phase 4.
+              Capture and reviewed Rule creation are ready. Library management
+              arrives in Phase 5.
             </p>
           </>
         )}
 
         {page === 'Library' && (
-          <p className="empty-state">Rules will appear here after candidate review is implemented.</p>
+          <p className="empty-state">Rule list, search, editing, and history arrive in Phase 5.</p>
         )}
 
         {page === 'Settings' && (
@@ -147,6 +146,8 @@ export function App() {
               <dd>{APP_VERSION}</dd>
             </div>
           </dl>
+        )}
+          </>
         )}
       </section>
     </main>

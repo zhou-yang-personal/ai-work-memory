@@ -8,15 +8,16 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.1`
+`v0.1.2`
 
 This repository currently contains:
 
 - Phase 1: WXT + React Manifest V3 skeleton with a side panel, background service worker, and platform content-script health check.
 - Phase 2: versioned IndexedDB schema, repository layer, asset revisions, source events, usage events, and unit tests.
 - Phase 3: selection capture, a quiet Save as Rule action on supported AI sites, a browser context-menu fallback, pending-capture inbox, and isolated ChatGPT/Claude/Gemini adapters.
+- Phase 4: reviewed Candidate Rule form, Scope selection, optional local AI evidence, exact similar-Rule detection, Create New, Update Existing, and immutable revisions.
 
-Candidate review, retrieval, context composition, and import/export UI are intentionally not implemented yet.
+Library management, retrieval, context composition, and import/export UI are intentionally not implemented yet.
 
 ## Technology
 
@@ -69,7 +70,8 @@ Click the toolbar action to open the side panel.
 
 - On ChatGPT, Claude, or Gemini, select text and choose **Save as Rule** beside the selection.
 - On any page, select text and use the browser context menu **Save selection as Rule**.
-- The side panel opens with a local preview. Phase 4 will turn that preview into an editable Candidate Rule.
+- The side panel opens an editable Candidate Rule. Review its name, scope, and content before choosing **Save Rule**.
+- If the same Rule name and Scope already exist, choose **Update Existing** to append a revision or **Create New** to preserve both Rules.
 
 ## Data and privacy
 
@@ -77,7 +79,7 @@ Click the toolbar action to open the side panel.
 - UI preferences may use extension-local storage.
 - No server, account, cloud sync, analytics upload, or model API is included.
 - The content script runs only on ChatGPT, Claude, and Gemini domains. It reads a selection only after a user selects text and activates Save as Rule.
-- Platform adapters may retain a bounded, nearby AI response as optional local evidence; they do not extract a full conversation.
+- Platform adapters may offer a bounded, nearby AI response as optional local evidence. Evidence is discarded unless the user explicitly opts in during review.
 - Captures do not store the page URL by default.
 - No all-sites host permission is requested.
 

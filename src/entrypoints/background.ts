@@ -11,10 +11,24 @@ import {
 } from '../core/capture/model';
 import { APP_VERSION } from '../core/version';
 import {
+  buildCanonicalKey,
+  buildCapturedSourceEvent,
+  normalizeCandidateRuleDraft,
+} from '../core/rules/candidate-rule';
+import {
   clearPendingCapture,
   getPendingCapture,
   setPendingCapture,
 } from '../services/capture-inbox';
+import {
+  AssetRepository,
+  CaptureRuleRepository,
+  RevisionRepository,
+} from '../storage/repositories';
+
+const assets = new AssetRepository();
+const revisions = new RevisionRepository();
+const capturedRules = new CaptureRuleRepository();
 
 async function notifyCaptureChanged(capture?: PendingCapture): Promise<void> {
   const event: ExtensionEvent = {
@@ -52,6 +66,71 @@ async function openSidePanel(tabId: number | undefined): Promise<void> {
   await browser.sidePanel?.open({ tabId }).catch(() => {
     // A browser without sidePanel support can still retain the pending capture.
   });
+}
+
+async function findSimilarRule(value: unknown) {
+  const candidate = normalizeCandidateRuleDraft(value);
+  if (!candidate) {
+    return { valid: false } as const;
+  }
+
+  const existing = await assets.findByCanonicalKey(buildCanonicalKey(candidate));
+  if (!existing) {
+    return { valid: true } as const;
+  }
+
+  const revision = await revisions.getById(existing.current_revision_id);
+  return {
+    valid: true,
+    existing: {
+      asset: existing,
+      ...(revision ? { revision } : {}),
+    },
+  } as const;
+}
+
+async function saveCandidateRule(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return { saved: false, error: 'Invalid save request.' } as const;
+  }
+
+  const request = payload as Record<string, unknown>;
+  const candidate = normalizeCandidateRuleDraft(request.draft);
+  const capture = await getPendingCapture();
+  if (!candidate || !capture) {
+    return { saved: false, error: 'The candidate or capture is no longer valid.' } as const;
+  }
+
+  const source = buildCapturedSourceEvent(capture, candidate.keepAiEvidence);
+  if (request.mode === 'update') {
+    if (typeof request.existingAssetId !== 'string') {
+      return { saved: false, error: 'Choose an existing Rule to update.' } as const;
+    }
+
+    const existing = await assets.getById(request.existingAssetId);
+    if (!existing || existing.status !== 'active' || existing.kind !== 'rule') {
+      return { saved: false, error: 'The selected Rule is unavailable.' } as const;
+    }
+
+    const saved = await capturedRules.update(existing.id, candidate, source);
+    await clearPendingCapture();
+    await notifyCaptureChanged();
+    return { saved: true, mode: 'update', result: saved } as const;
+  }
+
+  if (request.mode !== 'create') {
+    return { saved: false, error: 'Choose Create New or Update Existing.' } as const;
+  }
+
+  const baseCanonicalKey = buildCanonicalKey(candidate);
+  const duplicate = await assets.findByCanonicalKey(baseCanonicalKey);
+  const canonicalKey = duplicate
+    ? `${baseCanonicalKey}:${capture.id.slice(0, 8)}`
+    : baseCanonicalKey;
+  const saved = await capturedRules.create(candidate, canonicalKey, source);
+  await clearPendingCapture();
+  await notifyCaptureChanged();
+  return { saved: true, mode: 'create', result: saved } as const;
 }
 
 export default defineBackground(() => {
@@ -109,6 +188,13 @@ export default defineBackground(() => {
           await notifyCaptureChanged();
           return { cleared: true };
         });
+      case 'AIWM_FIND_SIMILAR_RULE':
+        return findSimilarRule(message.payload);
+      case 'AIWM_SAVE_CANDIDATE_RULE':
+        return saveCandidateRule(message.payload).catch((error: unknown) => ({
+          saved: false,
+          error: error instanceof Error ? error.message : 'Unable to save the Rule.',
+        }));
     }
   });
 });
