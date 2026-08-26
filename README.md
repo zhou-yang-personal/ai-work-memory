@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.3`
+`v0.1.4`
 
 This repository currently contains:
 
@@ -17,8 +17,9 @@ This repository currently contains:
 - Phase 3: selection capture, a quiet Save as Rule action on supported AI sites, a browser context-menu fallback, pending-capture inbox, and isolated ChatGPT/Claude/Gemini adapters.
 - Phase 4: reviewed Candidate Rule form, Scope selection, optional local AI evidence, exact similar-Rule detection, Create New, Update Existing, and immutable revisions.
 - Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, and immutable version history.
+- Phase 6: deterministic local Rule retrieval with Scope matching, bilingual keyword matching, transparent ranking reasons, and duplicate detection.
 
-Retrieval, context composition, and import/export UI are intentionally not implemented yet.
+Build Context composition and import/export UI are intentionally not implemented yet.
 
 ## Technology
 
@@ -80,6 +81,13 @@ Click the toolbar action to open the side panel.
 - Filter the list by Global, Task, Project, or Custom Scope.
 - Open a Rule to inspect its current content and complete revision history.
 - Editing appends a new immutable revision; archiving removes the Rule from the active Library without deleting its stored history.
+
+## Retrieval model
+
+- Retrieval stays fully local and deterministic; no embedding API, vector database, or model call is used.
+- Ranking combines Scope relevance with keyword coverage across Rule name, Scope, tags, and current content.
+- Each result includes visible matching reasons so Phase 7 can let the user decide which Rules to include.
+- English words and Chinese character bigrams are both supported.
 
 ## Data and privacy
 

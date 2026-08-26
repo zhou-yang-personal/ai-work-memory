@@ -21,6 +21,11 @@ import {
   type RuleLibraryItem,
 } from '../core/rules/rule-library';
 import {
+  detectDuplicateRules,
+  normalizeRetrievalInput,
+  rankRules,
+} from '../core/rules/retrieval';
+import {
   clearPendingCapture,
   getPendingCapture,
   setPendingCapture,
@@ -86,17 +91,22 @@ async function findSimilarRule(value: unknown) {
     return { valid: false } as const;
   }
 
-  const existing = await assets.findByCanonicalKey(buildCanonicalKey(candidate));
-  if (!existing) {
+  const duplicate = detectDuplicateRules(
+    candidate,
+    await loadActiveRuleItems(),
+    1,
+  )[0];
+  if (!duplicate) {
     return { valid: true } as const;
   }
 
-  const revision = await revisions.getById(existing.current_revision_id);
   return {
     valid: true,
     existing: {
-      asset: existing,
-      ...(revision ? { revision } : {}),
+      asset: duplicate.asset,
+      revision: duplicate.currentRevision,
+      score: duplicate.score,
+      reasons: duplicate.reasons,
     },
   } as const;
 }
@@ -147,8 +157,7 @@ async function saveCandidateRule(payload: unknown) {
   return { saved: true, mode: 'create', result: saved } as const;
 }
 
-async function listRules(value: unknown): Promise<RuleLibraryItem[]> {
-  const query = normalizeLibraryQuery(value);
+async function loadActiveRuleItems(): Promise<RuleLibraryItem[]> {
   const activeRules = (await assets.listActive()).filter(
     (asset) => asset.kind === 'rule',
   );
@@ -159,10 +168,26 @@ async function listRules(value: unknown): Promise<RuleLibraryItem[]> {
     }),
   );
 
+  return items.filter((item): item is RuleLibraryItem => item !== undefined);
+}
+
+async function listRules(value: unknown): Promise<RuleLibraryItem[]> {
   return filterRuleLibrary(
-    items.filter((item): item is RuleLibraryItem => item !== undefined),
-    query,
+    await loadActiveRuleItems(),
+    normalizeLibraryQuery(value),
   );
+}
+
+async function retrieveRules(value: unknown) {
+  const input = normalizeRetrievalInput(value);
+  if (!input) {
+    return { valid: false, rules: [] } as const;
+  }
+
+  return {
+    valid: true,
+    rules: rankRules(await loadActiveRuleItems(), input),
+  } as const;
 }
 
 async function getRuleDetail(value: unknown) {
@@ -323,6 +348,8 @@ export default defineBackground(() => {
           archived: false,
           error: error instanceof Error ? error.message : 'Unable to archive the Rule.',
         }));
+      case 'AIWM_RETRIEVE_RULES':
+        return retrieveRules(message.payload);
     }
   });
 });

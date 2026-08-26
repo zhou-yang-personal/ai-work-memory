@@ -2,6 +2,23 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.4] - 2026-08-26
+
+### Added
+
+- Deterministic local Rule retrieval using Scope and keyword signals.
+- Weighted ranking with explicit score, matched terms, and human-readable reasons.
+- English word and Chinese bigram tokenization.
+- Input normalization and bounded retrieval result limits.
+- Duplicate Rule detection using name, content, and Scope similarity.
+- Background retrieval message ready for the Phase 7 Build Context UI.
+- Unit tests covering ranking, reasons, keyword-only matches, Chinese text, and duplicate detection.
+
+### Changed
+
+- Candidate review now uses similarity-based duplicate detection instead of exact canonical-key matching only.
+- Version advanced to `0.1.4` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.3] - 2026-08-26
 
 ### Added

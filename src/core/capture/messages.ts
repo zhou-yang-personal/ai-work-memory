@@ -1,6 +1,7 @@
 import type { CaptureRequest, PendingCapture } from './model';
 import type { CandidateRuleDraft, RuleSaveMode } from '../rules/candidate-rule';
 import type { RuleLibraryQuery } from '../rules/rule-library';
+import type { RetrievalInput } from '../rules/retrieval';
 
 export const CAPTURE_CONTEXT_MENU_ID = 'aiwm-save-selection-as-rule';
 
@@ -24,7 +25,8 @@ export type ExtensionRequest =
       type: 'AIWM_UPDATE_LIBRARY_RULE';
       payload: { assetId: string; draft: CandidateRuleDraft };
     }
-  | { type: 'AIWM_ARCHIVE_RULE'; payload: { assetId: string } };
+  | { type: 'AIWM_ARCHIVE_RULE'; payload: { assetId: string } }
+  | { type: 'AIWM_RETRIEVE_RULES'; payload: RetrievalInput };
 
 export type ExtensionEvent =
   | {
@@ -50,6 +52,7 @@ export function isExtensionRequest(value: unknown): value is ExtensionRequest {
       'AIWM_GET_RULE_DETAIL',
       'AIWM_UPDATE_LIBRARY_RULE',
       'AIWM_ARCHIVE_RULE',
+      'AIWM_RETRIEVE_RULES',
     ].includes(value.type)
   );
 }

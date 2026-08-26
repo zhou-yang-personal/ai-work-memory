@@ -119,7 +119,7 @@ export function App() {
 
             <p className="phase-note">
               Capture, reviewed Rule creation, and Library management are ready.
-              Retrieval arrives in Phase 6.
+              Retrieval core is ready; Build Context interaction arrives in Phase 7.
             </p>
           </>
         )}
