@@ -2,6 +2,21 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.6] - 2026-08-26
+
+### Added
+
+- Versioned JSON export for Rules, revisions, Source Events, and Usage Events.
+- Readable Markdown export containing each current Rule and its metadata.
+- JSON import validation for schema compatibility, record shape, duplicate IDs, and cross-record references.
+- Atomic safe-merge imports that skip identical records and abort completely on ID or canonical Rule-key conflicts.
+- Settings controls for local export/import plus explicit privacy notes.
+- Unit tests for export validation, Markdown rendering, successful merge, repeated import, and conflict rollback.
+
+### Changed
+
+- Version advanced to `0.1.6` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.5] - 2026-08-26
 
 ### Added

@@ -26,6 +26,11 @@ import {
   rankRules,
 } from '../core/rules/retrieval';
 import {
+  createExportBundle,
+  renderMarkdownExport,
+  validateImportBundle,
+} from '../core/transfer/export-schema';
+import {
   clearPendingCapture,
   getPendingCapture,
   setPendingCapture,
@@ -33,6 +38,7 @@ import {
 import {
   AssetRepository,
   CaptureRuleRepository,
+  DataTransferRepository,
   RevisionRepository,
   UsageEventRepository,
 } from '../storage/repositories';
@@ -41,6 +47,7 @@ const assets = new AssetRepository();
 const revisions = new RevisionRepository();
 const capturedRules = new CaptureRuleRepository();
 const usageEvents = new UsageEventRepository();
+const dataTransfer = new DataTransferRepository();
 
 async function notifyCaptureChanged(capture?: PendingCapture): Promise<void> {
   const event: ExtensionEvent = {
@@ -316,6 +323,36 @@ async function recordUsage(payload: unknown) {
   return { recorded: true } as const;
 }
 
+async function exportData() {
+  const bundle = createExportBundle(
+    await dataTransfer.readAll(),
+    APP_VERSION,
+    new Date().toISOString(),
+  );
+  return {
+    exported: true,
+    json: JSON.stringify(bundle, null, 2),
+    markdown: renderMarkdownExport(bundle),
+    counts: {
+      assets: bundle.assets.length,
+      revisions: bundle.revisions.length,
+      sourceEvents: bundle.source_events.length,
+      usageEvents: bundle.usage_events.length,
+    },
+  } as const;
+}
+
+async function importData(value: unknown) {
+  const validation = validateImportBundle(value);
+  if (!validation.valid || !validation.bundle) {
+    return { imported: false, errors: validation.errors } as const;
+  }
+
+  const counts = await dataTransfer.merge(validation.bundle);
+  await notifyRuleLibraryChanged();
+  return { imported: true, counts, errors: [] } as const;
+}
+
 export default defineBackground(() => {
   browser.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
     // The sidePanel API is Chrome/Edge-specific; feature detection keeps startup safe.
@@ -396,6 +433,13 @@ export default defineBackground(() => {
         return retrieveRules(message.payload);
       case 'AIWM_RECORD_USAGE':
         return recordUsage(message.payload);
+      case 'AIWM_EXPORT_DATA':
+        return exportData();
+      case 'AIWM_IMPORT_DATA':
+        return importData(message.payload).catch((error: unknown) => ({
+          imported: false,
+          errors: [error instanceof Error ? error.message : 'Unable to import data.'],
+        }));
     }
   });
 });

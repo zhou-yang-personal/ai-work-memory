@@ -5,6 +5,7 @@ import { APP_VERSION } from '../../core/version';
 import { CandidateRuleReview } from './CandidateRuleReview';
 import { BuildContext } from './BuildContext';
 import { RuleLibrary } from './RuleLibrary';
+import { SettingsPanel } from './SettingsPanel';
 
 type Page = 'Build Context' | 'Library' | 'Settings';
 
@@ -104,35 +105,15 @@ export function App() {
           />
         ) : (
           <>
+            {page === 'Build Context' && <BuildContext />}
 
-        {page === 'Build Context' && (
-          <BuildContext />
-        )}
+            {page === 'Library' && (
+              <RuleLibrary onNotice={setSaveNotice} />
+            )}
 
-        {page === 'Library' && (
-          <RuleLibrary onNotice={setSaveNotice} />
-        )}
-
-        {page === 'Settings' && (
-          <dl className="settings-list">
-            <div>
-              <dt>Storage</dt>
-              <dd>Local IndexedDB</dd>
-            </div>
-            <div>
-              <dt>Capture privacy</dt>
-              <dd>Selection only; no page URL</dd>
-            </div>
-            <div>
-              <dt>Background service</dt>
-              <dd>{serviceReady ? 'Ready' : 'Unavailable'}</dd>
-            </div>
-            <div>
-              <dt>Version</dt>
-              <dd>{APP_VERSION}</dd>
-            </div>
-          </dl>
-        )}
+            {page === 'Settings' && (
+              <SettingsPanel serviceReady={serviceReady} />
+            )}
           </>
         )}
       </section>

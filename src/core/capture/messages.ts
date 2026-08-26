@@ -34,7 +34,9 @@ export type ExtensionRequest =
         contextId: string;
         events: Array<{ assetId: string; action: UsageAction }>;
       };
-    };
+    }
+  | { type: 'AIWM_EXPORT_DATA' }
+  | { type: 'AIWM_IMPORT_DATA'; payload: unknown };
 
 export type ExtensionEvent =
   | {
@@ -62,6 +64,8 @@ export function isExtensionRequest(value: unknown): value is ExtensionRequest {
       'AIWM_ARCHIVE_RULE',
       'AIWM_RETRIEVE_RULES',
       'AIWM_RECORD_USAGE',
+      'AIWM_EXPORT_DATA',
+      'AIWM_IMPORT_DATA',
     ].includes(value.type)
   );
 }

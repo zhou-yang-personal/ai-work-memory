@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.5`
+`v0.1.6`
 
 This repository currently contains:
 
@@ -19,8 +19,9 @@ This repository currently contains:
 - Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, and immutable version history.
 - Phase 6: deterministic local Rule retrieval with Scope matching, bilingual keyword matching, transparent ranking reasons, and duplicate detection.
 - Phase 7: Build Context workflow for Task and Current Input, explicit Rule inclusion, preview, copy, and local reuse evidence.
+- Phase 8: versioned JSON export/import with atomic safe merge, schema validation, conflict detection, and readable Markdown export.
 
-Import/export UI is intentionally not implemented yet.
+Optional on-device Rule distillation is the only remaining V0.1 phase.
 
 ## Technology
 
@@ -109,6 +110,13 @@ Retrieved, included, excluded, and copied actions are stored only as local Usage
 - Captures do not store the page URL by default.
 - No all-sites host permission is requested.
 
+## Import and export
+
+- Open **Settings** to export a complete, versioned JSON backup or a readable Markdown Rule document.
+- JSON imports validate the schema and every relationship before writing.
+- Existing identical records are skipped. Any ID or Rule-key conflict aborts the complete import, so partial imports are not left behind.
+- Import and export remain local browser operations; no data is sent to a server.
+
 ## Storage model
 
 - `assets`: stable identity and current revision pointer.
@@ -118,6 +126,7 @@ Retrieved, included, excluded, and copied actions are stored only as local Usage
 - `meta`: schema metadata.
 
 Database schema version: `1`.
+Export schema version: `1`.
 
 ## Repository structure
 
