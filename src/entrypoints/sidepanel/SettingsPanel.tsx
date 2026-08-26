@@ -205,6 +205,10 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
             <dd>Explicit opt-in per Rule</dd>
           </div>
           <div>
+            <dt>Project / task context</dt>
+            <dd>Read on Save · temporary</dd>
+          </div>
+          <div>
             <dt>Cloud transfer</dt>
             <dd>None</dd>
           </div>

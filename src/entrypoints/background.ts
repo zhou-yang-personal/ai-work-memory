@@ -2,6 +2,7 @@ import { resolvePlatformFromUrl } from '../adapters';
 import {
   CAPTURE_CONTEXT_MENU_ID,
   isExtensionRequest,
+  READ_ACTIVE_CAPTURE_TYPE,
   type ExtensionEvent,
 } from '../core/capture/messages';
 import {
@@ -92,6 +93,43 @@ async function openSidePanel(tabId: number | undefined): Promise<void> {
   await browser.sidePanel?.open({ tabId }).catch(() => {
     // A browser without sidePanel support can still retain the pending capture.
   });
+}
+
+async function buildContextMenuCapture(
+  selectedText: string,
+  tabId: number | undefined,
+  tabUrl: string | undefined,
+): Promise<CaptureRequest> {
+  const platform = resolvePlatformFromUrl(tabUrl);
+  const fallback: CaptureRequest = {
+    selectedText,
+    platform,
+    channel: 'context-menu',
+  };
+
+  if (tabId === undefined || platform === 'generic') {
+    return fallback;
+  }
+
+  try {
+    const enriched = await browser.tabs.sendMessage(tabId, {
+      type: READ_ACTIVE_CAPTURE_TYPE,
+    });
+    if (typeof enriched !== 'object' || enriched === null) {
+      return fallback;
+    }
+
+    return (
+      normalizeCaptureRequest({
+        ...enriched,
+        selectedText,
+        platform,
+        channel: 'context-menu',
+      }) ?? fallback
+    );
+  } catch {
+    return fallback;
+  }
 }
 
 async function findSimilarRule(value: unknown) {
@@ -376,13 +414,11 @@ export default defineBackground(() => {
       return;
     }
 
-    const request: CaptureRequest = {
-      selectedText: info.selectionText,
-      platform: resolvePlatformFromUrl(tab?.url),
-      channel: 'context-menu',
-    };
-
-    void acceptCapture(request).then(() => openSidePanel(tab?.id));
+    // sidePanel.open must stay in the direct user-gesture call stack.
+    void openSidePanel(tab?.id);
+    void buildContextMenuCapture(info.selectionText, tab?.id, tab?.url).then(
+      acceptCapture,
+    );
   });
 
   browser.runtime.onMessage.addListener((message: unknown, sender) => {
@@ -394,13 +430,12 @@ export default defineBackground(() => {
       case 'AIWM_HEALTH_CHECK':
         return Promise.resolve({ source: 'background', version: APP_VERSION });
       case 'AIWM_CAPTURE_SELECTION':
-        return acceptCapture(message.payload).then(async (capture) => {
-          if (capture) {
-            await openSidePanel(sender.tab?.id);
-          }
-
-          return { accepted: Boolean(capture), capture };
-        });
+        // Open first; capture persistence and context normalization may be async.
+        void openSidePanel(sender.tab?.id);
+        return acceptCapture(message.payload).then((capture) => ({
+          accepted: Boolean(capture),
+          capture,
+        }));
       case 'AIWM_GET_PENDING_CAPTURE':
         return getPendingCapture();
       case 'AIWM_CLEAR_PENDING_CAPTURE':

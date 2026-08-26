@@ -5,6 +5,7 @@ import type { RuleLibraryQuery } from '../rules/rule-library';
 import type { RetrievalInput } from '../rules/retrieval';
 
 export const CAPTURE_CONTEXT_MENU_ID = 'aiwm-save-selection-as-rule';
+export const READ_ACTIVE_CAPTURE_TYPE = 'AIWM_READ_ACTIVE_CAPTURE';
 
 export type ExtensionRequest =
   | { type: 'AIWM_HEALTH_CHECK' }

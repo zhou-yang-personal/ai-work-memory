@@ -19,4 +19,18 @@ describe('ManualFallbackProvider', () => {
       suggestedScope: 'global',
     });
   });
+
+  it('uses captured Project identity as the conservative Scope suggestion', async () => {
+    const provider = new ManualFallbackProvider();
+
+    await expect(
+      provider.distillCorrection({
+        correction: 'Only use verified status.',
+        context: { projectName: 'Claro Fiber Migration' },
+      }),
+    ).resolves.toMatchObject({
+      suggestedScope: 'project',
+      suggestedScopeLabel: 'Claro Fiber Migration',
+    });
+  });
 });

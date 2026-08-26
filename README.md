@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.7`
+`v0.1.8`
 
 This repository currently contains:
 
@@ -21,6 +21,7 @@ This repository currently contains:
 - Phase 7: Build Context workflow for Task and Current Input, explicit Rule inclusion, preview, copy, and local reuse evidence.
 - Phase 8: versioned JSON export/import with atomic safe merge, schema validation, conflict detection, and readable Markdown export.
 - Phase 9: provider-based Rule distillation with an always-available manual fallback and optional Chrome on-device Prompt API enhancement.
+- Capture refinement: immediate side-panel review plus bounded Project, conversation, and current-task context for stronger Rule candidates.
 
 The complete V0.1 `Correction -> Rule -> Reuse` flow is implemented.
 
@@ -75,7 +76,10 @@ Click the toolbar action to open the side panel.
 
 - On ChatGPT, Claude, or Gemini, select text and choose **Save as Rule** beside the selection.
 - On any page, select text and use the browser context menu **Save selection as Rule**.
-- The side panel opens an editable Candidate Rule. Review its name, scope, and content before choosing **Save Rule**.
+- The side panel opens immediately. On supported AI sites, the extension reads only the visible current Project identity, conversation title, nearest prior user task, and nearby AI response at that explicit moment.
+- Candidate Review separates the original Correction, temporary Captured Context, and the proposed Reusable Rule. Detected Project names prefill Project Scope.
+- If Chrome's on-device Prompt API is already available, it automatically proposes a context-aware Rule without overwriting user edits. Otherwise the editable manual candidate remains available.
+- Review the Rule name, Scope, and content before choosing **Save Rule**.
 - If the same Rule name and Scope already exist, choose **Update Existing** to append a revision or **Create New** to preserve both Rules.
 
 ## Manage saved Rules
@@ -115,6 +119,8 @@ Retrieved, included, excluded, and copied actions are stored only as local Usage
 - No server, account, cloud sync, analytics upload, or model API is included.
 - Optional Chrome built-in AI inference runs on device. The browser may download its local model after explicit user activation.
 - The content script runs only on ChatGPT, Claude, and Gemini domains. It reads a selection only after a user selects text and activates Save as Rule.
+- Bounded Project/conversation/task context is read only during that explicit capture action. The extension does not scan project history, Project Sources, full conversations, or unrelated pages.
+- Captured conversation title and task context are temporary review inputs and are not persisted as a transcript. A detected Project name may be retained only through the user-confirmed Rule Scope.
 - Platform adapters may offer a bounded, nearby AI response as optional local evidence. Evidence is discarded unless the user explicitly opts in during review.
 - Captures do not store the page URL by default.
 - No all-sites host permission is requested.

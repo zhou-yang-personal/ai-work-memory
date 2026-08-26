@@ -116,12 +116,16 @@ export function buildCanonicalKey(rule: NormalizedCandidateRule): string {
 export function deriveCandidateRule(capture: PendingCapture): CandidateRuleDraft {
   const candidate = createManualRuleCandidate({
     correction: capture.selectedText,
+    ...(capture.context ? { context: capture.context } : {}),
   });
 
   return {
     name: candidate.name,
     content: candidate.content,
     scopeLevel: candidate.suggestedScope,
+    ...(candidate.suggestedScopeLabel
+      ? { scopeLabel: candidate.suggestedScopeLabel }
+      : {}),
     keepAiEvidence: false,
   };
 }

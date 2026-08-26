@@ -139,6 +139,71 @@ h1 {
   background: #f7faff;
 }
 
+.capture-context {
+  padding: 12px 14px;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.capture-context dl {
+  margin: 6px 0 0;
+}
+
+.capture-context dl div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.capture-context dt,
+.capture-context dd {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.capture-context dd {
+  min-width: 0;
+  color: #5f6e7d;
+  overflow-wrap: anywhere;
+}
+
+.capture-context .context-task {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.capture-context > small,
+.context-fallback {
+  display: block;
+  margin: 8px 0 0;
+  color: #7b8794;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.rule-candidate-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.rule-candidate-heading .capture-kicker {
+  margin: 0;
+}
+
+.rule-candidate-heading span {
+  color: #758392;
+  font-size: 9px;
+}
+
 .field-group {
   display: flex;
   min-width: 0;

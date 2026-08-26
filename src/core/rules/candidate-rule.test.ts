@@ -27,6 +27,18 @@ describe('candidate Rule logic', () => {
     });
   });
 
+  it('prefills Project Scope from bounded capture context', () => {
+    expect(
+      deriveCandidateRule({
+        ...capture,
+        context: { projectName: 'Claro Fiber Migration' },
+      }),
+    ).toMatchObject({
+      scopeLevel: 'project',
+      scopeLabel: 'Claro Fiber Migration',
+    });
+  });
+
   it('normalizes a scoped candidate and builds a stable canonical key', () => {
     const candidate = normalizeCandidateRuleDraft({
       name: ' Project Status Evidence Rule ',
@@ -70,4 +82,3 @@ describe('candidate Rule logic', () => {
     });
   });
 });
-

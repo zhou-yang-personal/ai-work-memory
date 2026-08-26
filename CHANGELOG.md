@@ -2,6 +2,26 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.8] - 2026-08-26
+
+### Added
+
+- Bounded `CaptureContext` for current Project name, conversation title, and nearest prior user task.
+- Platform-specific context extraction for ChatGPT, Claude, and Gemini with selection-only fallback.
+- Context-aware Candidate Review that clearly separates Correction, temporary Context, and Reusable Rule.
+- Automatic Project Scope prefilling when a current Project can be identified.
+- Context-aware Chrome on-device Rule distillation that generalizes a correction instead of prompting from the selected sentence alone.
+- Automatic distillation when the local model is already available, with protection against overwriting user edits.
+- Unit coverage for context normalization, Project Scope suggestions, conversation-title cleanup, and context-aware model prompts.
+
+### Fixed
+
+- Context-menu and page-action capture now invoke the side panel before asynchronous persistence or context extraction, preserving the direct user-gesture requirement.
+
+### Changed
+
+- Version advanced to `0.1.8` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.7] - 2026-08-26
 
 ### Added

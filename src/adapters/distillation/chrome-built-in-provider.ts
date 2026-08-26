@@ -79,7 +79,10 @@ function resolveLanguageModel(): LanguageModelApi | undefined {
   return value as LanguageModelApi;
 }
 
-function parseCandidate(value: string): DistilledRuleCandidate {
+function parseCandidate(
+  value: string,
+  input: CorrectionInput,
+): DistilledRuleCandidate {
   const parsed = JSON.parse(value) as unknown;
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error('Browser AI returned an invalid candidate.');
@@ -99,11 +102,34 @@ function parseCandidate(value: string): DistilledRuleCandidate {
     throw new Error('Browser AI returned an incomplete candidate.');
   }
 
+  const capturedProject = input.context?.projectName;
   return {
     name: name.slice(0, 120),
     content: content.slice(0, 12_000),
-    suggestedScope: suggestedScope as ScopeLevel,
+    suggestedScope: capturedProject
+      ? 'project'
+      : (suggestedScope as ScopeLevel),
+    ...(capturedProject ? { suggestedScopeLabel: capturedProject } : {}),
   };
+}
+
+function createDistillationPrompt(input: CorrectionInput): string {
+  const context = input.context;
+  return [
+    'Create a reusable Rule Name, Rule Content, and conservative Scope suggestion.',
+    'Generalize the correction into a clear condition or constraint instead of copying it unchanged.',
+    'Use global unless the correction clearly refers to one task or project.',
+    context?.projectName ? `Project: ${context.projectName}` : undefined,
+    context?.conversationTitle
+      ? `Conversation: ${context.conversationTitle}`
+      : undefined,
+    context?.currentTask ? `Current task: ${context.currentTask}` : undefined,
+    '',
+    'Correction:',
+    input.correction.trim().slice(0, 12_000),
+  ]
+    .filter((line): line is string => line !== undefined)
+    .join('\n');
 }
 
 export class ChromeBuiltInProvider implements DistillationProvider {
@@ -165,19 +191,13 @@ export class ChromeBuiltInProvider implements DistillationProvider {
 
     try {
       const response = await session.prompt(
-        [
-          'Create a Rule Name, Rule Content, and conservative Scope suggestion.',
-          'Use global unless the correction clearly refers to one task or project.',
-          '',
-          'Correction:',
-          input.correction.trim().slice(0, 12_000),
-        ].join('\n'),
+        createDistillationPrompt(input),
         {
           responseConstraint: responseSchema,
           omitResponseConstraintInput: true,
         },
       );
-      return parseCandidate(response);
+      return parseCandidate(response, input);
     } finally {
       session.destroy();
     }

@@ -1,4 +1,5 @@
 import type { ScopeLevel } from '../assets/types';
+import type { CaptureContext } from '../capture/model';
 
 export type DistillationAvailability =
   | 'available'
@@ -8,12 +9,14 @@ export type DistillationAvailability =
 
 export interface CorrectionInput {
   correction: string;
+  context?: CaptureContext;
 }
 
 export interface DistilledRuleCandidate {
   name: string;
   content: string;
   suggestedScope: ScopeLevel;
+  suggestedScopeLabel?: string;
 }
 
 export interface DistillationOptions {

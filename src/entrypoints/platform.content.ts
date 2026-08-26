@@ -1,4 +1,5 @@
 import { captureSelection } from '../adapters';
+import { READ_ACTIVE_CAPTURE_TYPE } from '../core/capture/messages';
 
 const BUTTON_OFFSET = 10;
 
@@ -49,7 +50,6 @@ export default defineContentScript({
     'https://gemini.google.com/*',
   ],
   main() {
-    const pageUrl = new URL(window.location.href);
     let pendingSelection: Selection | undefined;
     let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -58,7 +58,10 @@ export default defineContentScript({
         return;
       }
 
-      const request = captureSelection(pageUrl, pendingSelection);
+      const request = captureSelection(
+        new URL(window.location.href),
+        pendingSelection,
+      );
       if (!request) {
         element.style.display = 'none';
         return;
@@ -118,6 +121,26 @@ export default defineContentScript({
       if (event.key.startsWith('Arrow') || event.key === 'Shift') {
         setTimeout(positionAction);
       }
+    });
+
+    browser.runtime.onMessage.addListener((message: unknown) => {
+      if (
+        typeof message !== 'object' ||
+        message === null ||
+        !('type' in message) ||
+        message.type !== READ_ACTIVE_CAPTURE_TYPE
+      ) {
+        return undefined;
+      }
+
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+        return Promise.resolve(undefined);
+      }
+
+      return Promise.resolve(
+        captureSelection(new URL(window.location.href), selection),
+      );
     });
 
     browser.runtime.sendMessage({ type: 'AIWM_HEALTH_CHECK' }).catch(() => {

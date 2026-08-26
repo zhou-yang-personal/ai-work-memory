@@ -26,7 +26,10 @@ export function createManualRuleCandidate(
   return {
     name: `${baseName || 'Untitled'} Rule`.slice(0, MAX_RULE_NAME_LENGTH),
     content,
-    suggestedScope: 'global',
+    suggestedScope: input.context?.projectName ? 'project' : 'global',
+    ...(input.context?.projectName
+      ? { suggestedScopeLabel: input.context.projectName }
+      : {}),
   };
 }
 

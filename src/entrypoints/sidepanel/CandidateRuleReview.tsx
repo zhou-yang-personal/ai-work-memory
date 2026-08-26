@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import type { Asset, AssetRevision, ScopeLevel } from '../../core/assets/types';
 import type { PendingCapture } from '../../core/capture/model';
@@ -69,14 +69,83 @@ export function CandidateRuleReview({
   >('checking');
   const [distillationNotice, setDistillationNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const mounted = useRef(true);
+  const autoDistillationStarted = useRef(false);
+  const draftEdited = useRef(false);
+
+  const runDistillation = async (mode: 'automatic' | 'explicit') => {
+    setDistilling(true);
+    setError(undefined);
+    setDistillationNotice(
+      mode === 'automatic'
+        ? 'Creating a reusable Rule from captured context…'
+        : browserAi === 'downloadable' || browserAi === 'downloading'
+          ? 'Preparing the on-device model…'
+          : 'Creating a local suggestion…',
+    );
+
+    try {
+      const result = await distillationService.distillCorrection(
+        {
+          correction: capture.selectedText,
+          ...(capture.context ? { context: capture.context } : {}),
+        },
+        {
+          onDownloadProgress: (progress) => {
+            if (mounted.current) {
+              setDistillationNotice(
+                `Downloading the on-device model… ${Math.round(progress * 100)}%`,
+              );
+            }
+          },
+        },
+      );
+      if (!mounted.current) return;
+
+      if (result.usedFallback) {
+        setBrowserAi('unavailable');
+        setDistillationNotice(
+          'Browser AI was unavailable. Review and edit the manual draft.',
+        );
+      } else if (mode === 'automatic' && draftEdited.current) {
+        setBrowserAi('available');
+        setDistillationNotice(
+          'Your edits were kept; the automatic suggestion did not overwrite them.',
+        );
+      } else {
+        setDraft((current) => ({
+          ...current,
+          name: result.candidate.name,
+          content: result.candidate.content,
+        }));
+        setBrowserAi('available');
+        setDistillationNotice(
+          'Browser AI suggested a reusable Rule. Review it before saving.',
+        );
+      }
+    } catch {
+      if (!mounted.current) return;
+      setBrowserAi('unavailable');
+      setDistillationNotice(
+        'Browser AI was unavailable. Review and edit the manual draft.',
+      );
+    } finally {
+      if (mounted.current) setDistilling(false);
+    }
+  };
 
   useEffect(() => {
-    let active = true;
+    mounted.current = true;
     void distillationService.getBrowserAvailability().then((status) => {
-      if (active) setBrowserAi(status);
+      if (!mounted.current) return;
+      setBrowserAi(status);
+      if (status === 'available' && !autoDistillationStarted.current) {
+        autoDistillationStarted.current = true;
+        void runDistillation('automatic');
+      }
     });
     return () => {
-      active = false;
+      mounted.current = false;
     };
   }, []);
 
@@ -97,6 +166,7 @@ export function CandidateRuleReview({
     key: Key,
     value: CandidateRuleDraft[Key],
   ) => {
+    draftEdited.current = true;
     setDraft((current) => ({ ...current, [key]: value }));
     setError(undefined);
   };
@@ -136,53 +206,6 @@ export function CandidateRuleReview({
     void save('create');
   };
 
-  const improveWithBrowserAi = async () => {
-    setDistilling(true);
-    setError(undefined);
-    setDistillationNotice(
-      browserAi === 'downloadable' || browserAi === 'downloading'
-        ? 'Preparing the on-device model…'
-        : 'Creating a local suggestion…',
-    );
-
-    try {
-      const result = await distillationService.distillCorrection(
-        { correction: capture.selectedText },
-        {
-          onDownloadProgress: (progress) => {
-            setDistillationNotice(
-              `Downloading the on-device model… ${Math.round(progress * 100)}%`,
-            );
-          },
-        },
-      );
-
-      if (result.usedFallback) {
-        setBrowserAi('unavailable');
-        setDistillationNotice(
-          'Browser AI was unavailable. Your editable manual draft is unchanged.',
-        );
-      } else {
-        setDraft((current) => ({
-          ...current,
-          name: result.candidate.name,
-          content: result.candidate.content,
-        }));
-        setBrowserAi('available');
-        setDistillationNotice(
-          'Browser AI suggested a draft. Review it before saving.',
-        );
-      }
-    } catch {
-      setBrowserAi('unavailable');
-      setDistillationNotice(
-        'Browser AI was unavailable. Your editable manual draft is unchanged.',
-      );
-    } finally {
-      setDistilling(false);
-    }
-  };
-
   return (
     <form className="candidate-form" onSubmit={submit}>
       <section className="source-panel">
@@ -197,6 +220,53 @@ export function CandidateRuleReview({
         </div>
         <blockquote>{capture.selectedText}</blockquote>
       </section>
+
+      <section className="capture-context">
+        <div className="section-heading">
+          <p className="capture-kicker">Captured Context</p>
+          <span className="capture-meta">Visible context only</span>
+        </div>
+        {capture.context || capture.aiText ? (
+          <dl>
+            {capture.context?.projectName && (
+              <div>
+                <dt>Project</dt>
+                <dd>{capture.context.projectName}</dd>
+              </div>
+            )}
+            {capture.context?.conversationTitle && (
+              <div>
+                <dt>Conversation</dt>
+                <dd>{capture.context.conversationTitle}</dd>
+              </div>
+            )}
+            {capture.context?.currentTask && (
+              <div>
+                <dt>Current task</dt>
+                <dd className="context-task">{capture.context.currentTask}</dd>
+              </div>
+            )}
+            {capture.aiText && (
+              <div>
+                <dt>Nearby AI response</dt>
+                <dd>Detected · optional evidence</dd>
+              </div>
+            )}
+          </dl>
+        ) : (
+          <p className="context-fallback">
+            Project context was unavailable. Selection-only capture remains active.
+          </p>
+        )}
+        <small>
+          Used for this review. Conversation context is not saved as a transcript.
+        </small>
+      </section>
+
+      <div className="rule-candidate-heading">
+        <p className="capture-kicker">Reusable Rule</p>
+        <span>Review before write</span>
+      </div>
 
       <div className="field-group">
         <label htmlFor="rule-name">Rule Name</label>
@@ -245,12 +315,12 @@ export function CandidateRuleReview({
 
       <div className="field-group">
         <div className="distillation-assist">
-          <label htmlFor="rule-content">Rule Content</label>
+          <label htmlFor="rule-content">Reusable Rule Content</label>
           {browserAi !== 'checking' && browserAi !== 'unavailable' && (
             <button
               className="text-button"
               disabled={distilling || saving}
-              onClick={() => void improveWithBrowserAi()}
+              onClick={() => void runDistillation('explicit')}
               type="button"
             >
               {distilling
