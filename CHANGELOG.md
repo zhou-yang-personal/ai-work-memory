@@ -2,6 +2,23 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.3] - 2026-08-26
+
+### Added
+
+- Rule Library list sorted by most recent update.
+- Search across Rule name, Scope label, tags, and current Rule content.
+- Scope filters for Global, Task, Project, and Custom Rules.
+- Rule detail view with complete immutable revision history.
+- Rule editing that updates metadata and appends a new revision.
+- Two-step Rule archive action that preserves stored history.
+- Unit tests for Library filtering and metadata-aware revision updates.
+
+### Changed
+
+- Background messaging now exposes typed Library list, detail, update, and archive operations.
+- Version advanced to `0.1.3` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.2] - 2026-08-26
 
 ### Added

@@ -14,6 +14,10 @@ export interface CreateRuleInput {
 }
 
 export interface UpdateRuleInput {
+  name?: string;
+  scope?: ScopeSpec;
+  canonical_key?: string;
+  tags?: string[];
   content: string;
   source_event_ids?: string[];
   change_reason?: string;
@@ -126,6 +130,12 @@ export class AssetRepository {
     };
     const updatedAsset: Asset = {
       ...asset,
+      ...(input.name === undefined ? {} : { name: input.name }),
+      ...(input.scope === undefined ? {} : { scope: input.scope }),
+      ...(input.canonical_key === undefined
+        ? {}
+        : { canonical_key: input.canonical_key }),
+      ...(input.tags === undefined ? {} : { tags: input.tags }),
       current_revision_id: revisionId,
       updated_at: timestamp,
     };
@@ -156,4 +166,3 @@ export class AssetRepository {
     return archived;
   }
 }
-

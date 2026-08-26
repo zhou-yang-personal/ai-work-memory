@@ -1,5 +1,6 @@
 import type { CaptureRequest, PendingCapture } from './model';
 import type { CandidateRuleDraft, RuleSaveMode } from '../rules/candidate-rule';
+import type { RuleLibraryQuery } from '../rules/rule-library';
 
 export const CAPTURE_CONTEXT_MENU_ID = 'aiwm-save-selection-as-rule';
 
@@ -16,12 +17,21 @@ export type ExtensionRequest =
         mode: RuleSaveMode;
         existingAssetId?: string;
       };
-    };
+    }
+  | { type: 'AIWM_LIST_RULES'; payload: RuleLibraryQuery }
+  | { type: 'AIWM_GET_RULE_DETAIL'; payload: { assetId: string } }
+  | {
+      type: 'AIWM_UPDATE_LIBRARY_RULE';
+      payload: { assetId: string; draft: CandidateRuleDraft };
+    }
+  | { type: 'AIWM_ARCHIVE_RULE'; payload: { assetId: string } };
 
-export type ExtensionEvent = {
-  type: 'AIWM_PENDING_CAPTURE_CHANGED';
-  payload?: PendingCapture;
-};
+export type ExtensionEvent =
+  | {
+      type: 'AIWM_PENDING_CAPTURE_CHANGED';
+      payload?: PendingCapture;
+    }
+  | { type: 'AIWM_RULE_LIBRARY_CHANGED' };
 
 export function isExtensionRequest(value: unknown): value is ExtensionRequest {
   return (
@@ -36,6 +46,10 @@ export function isExtensionRequest(value: unknown): value is ExtensionRequest {
       'AIWM_CLEAR_PENDING_CAPTURE',
       'AIWM_FIND_SIMILAR_RULE',
       'AIWM_SAVE_CANDIDATE_RULE',
+      'AIWM_LIST_RULES',
+      'AIWM_GET_RULE_DETAIL',
+      'AIWM_UPDATE_LIBRARY_RULE',
+      'AIWM_ARCHIVE_RULE',
     ].includes(value.type)
   );
 }

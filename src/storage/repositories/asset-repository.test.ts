@@ -79,6 +79,36 @@ describe('AssetRepository', () => {
     });
   });
 
+  it('edits Rule metadata and content while appending a revision', async () => {
+    const assets = new AssetRepository(databaseProvider, clock, idFactory);
+    const revisions = new RevisionRepository(databaseProvider);
+    const original = await assets.createRule({
+      name: 'Evidence Rule',
+      scope: { level: 'global' },
+      canonical_key: 'global:all:evidence-rule',
+      content: 'Preserve the source status.',
+    });
+
+    const updated = await assets.appendRevision(original.id, {
+      name: 'Weekly Status Evidence Rule',
+      scope: { level: 'task', key: 'weekly-report', label: 'Weekly Report' },
+      canonical_key: 'task:weekly-report:weekly-status-evidence-rule',
+      content: 'Use Completed only when the weekly source confirms it.',
+      change_reason: 'Edited in Rule Library.',
+    });
+
+    expect(updated).toMatchObject({
+      id: original.id,
+      name: 'Weekly Status Evidence Rule',
+      scope: { level: 'task', key: 'weekly-report', label: 'Weekly Report' },
+      canonical_key: 'task:weekly-report:weekly-status-evidence-rule',
+    });
+    await expect(revisions.listForAsset(original.id)).resolves.toMatchObject([
+      { version: 2, content: 'Use Completed only when the weekly source confirms it.' },
+      { version: 1, content: 'Preserve the source status.' },
+    ]);
+  });
+
   it('archives a rule so it no longer appears in active results', async () => {
     const assets = new AssetRepository(databaseProvider, clock, idFactory);
     const asset = await assets.createRule({
@@ -94,4 +124,3 @@ describe('AssetRepository', () => {
     await expect(assets.listActive()).resolves.toEqual([]);
   });
 });
-

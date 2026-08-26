@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { PendingCapture } from '../../core/capture/model';
 import { APP_VERSION } from '../../core/version';
 import { CandidateRuleReview } from './CandidateRuleReview';
+import { RuleLibrary } from './RuleLibrary';
 
 type Page = 'Build Context' | 'Library' | 'Settings';
 
@@ -117,14 +118,14 @@ export function App() {
             />
 
             <p className="phase-note">
-              Capture and reviewed Rule creation are ready. Library management
-              arrives in Phase 5.
+              Capture, reviewed Rule creation, and Library management are ready.
+              Retrieval arrives in Phase 6.
             </p>
           </>
         )}
 
         {page === 'Library' && (
-          <p className="empty-state">Rule list, search, editing, and history arrive in Phase 5.</p>
+          <RuleLibrary onNotice={setSaveNotice} />
         )}
 
         {page === 'Settings' && (

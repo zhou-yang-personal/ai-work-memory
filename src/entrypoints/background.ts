@@ -16,6 +16,11 @@ import {
   normalizeCandidateRuleDraft,
 } from '../core/rules/candidate-rule';
 import {
+  filterRuleLibrary,
+  normalizeLibraryQuery,
+  type RuleLibraryItem,
+} from '../core/rules/rule-library';
+import {
   clearPendingCapture,
   getPendingCapture,
   setPendingCapture,
@@ -38,6 +43,13 @@ async function notifyCaptureChanged(capture?: PendingCapture): Promise<void> {
 
   await browser.runtime.sendMessage(event).catch(() => {
     // No side panel may be listening yet.
+  });
+}
+
+async function notifyRuleLibraryChanged(): Promise<void> {
+  const event: ExtensionEvent = { type: 'AIWM_RULE_LIBRARY_CHANGED' };
+  await browser.runtime.sendMessage(event).catch(() => {
+    // The Library page may not be open.
   });
 }
 
@@ -115,6 +127,7 @@ async function saveCandidateRule(payload: unknown) {
     const saved = await capturedRules.update(existing.id, candidate, source);
     await clearPendingCapture();
     await notifyCaptureChanged();
+    await notifyRuleLibraryChanged();
     return { saved: true, mode: 'update', result: saved } as const;
   }
 
@@ -130,7 +143,108 @@ async function saveCandidateRule(payload: unknown) {
   const saved = await capturedRules.create(candidate, canonicalKey, source);
   await clearPendingCapture();
   await notifyCaptureChanged();
+  await notifyRuleLibraryChanged();
   return { saved: true, mode: 'create', result: saved } as const;
+}
+
+async function listRules(value: unknown): Promise<RuleLibraryItem[]> {
+  const query = normalizeLibraryQuery(value);
+  const activeRules = (await assets.listActive()).filter(
+    (asset) => asset.kind === 'rule',
+  );
+  const items = await Promise.all(
+    activeRules.map(async (asset) => {
+      const currentRevision = await revisions.getById(asset.current_revision_id);
+      return currentRevision ? { asset, currentRevision } : undefined;
+    }),
+  );
+
+  return filterRuleLibrary(
+    items.filter((item): item is RuleLibraryItem => item !== undefined),
+    query,
+  );
+}
+
+async function getRuleDetail(value: unknown) {
+  if (typeof value !== 'object' || value === null || !('assetId' in value)) {
+    return undefined;
+  }
+
+  const assetId = value.assetId;
+  if (typeof assetId !== 'string') {
+    return undefined;
+  }
+
+  const asset = await assets.getById(assetId);
+  if (!asset || asset.kind !== 'rule') {
+    return undefined;
+  }
+
+  const history = await revisions.listForAsset(asset.id);
+  const currentRevision = history.find(
+    (revision) => revision.id === asset.current_revision_id,
+  );
+  if (!currentRevision) {
+    return undefined;
+  }
+
+  return { asset, currentRevision, revisions: history };
+}
+
+async function updateLibraryRule(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return { saved: false, error: 'Invalid Rule update.' } as const;
+  }
+
+  const request = payload as Record<string, unknown>;
+  const candidate = normalizeCandidateRuleDraft(request.draft);
+  if (typeof request.assetId !== 'string' || !candidate) {
+    return { saved: false, error: 'Complete the Rule name, Scope, and content.' } as const;
+  }
+
+  const asset = await assets.getById(request.assetId);
+  if (!asset || asset.status !== 'active' || asset.kind !== 'rule') {
+    return { saved: false, error: 'This Rule is no longer available.' } as const;
+  }
+
+  const baseCanonicalKey = buildCanonicalKey(candidate);
+  const duplicate = await assets.findByCanonicalKey(baseCanonicalKey);
+  if (duplicate && duplicate.id !== asset.id && duplicate.status === 'active') {
+    return {
+      saved: false,
+      error: 'Another active Rule already uses this name and Scope.',
+    } as const;
+  }
+
+  const canonicalKey =
+    duplicate && duplicate.id !== asset.id
+      ? `${baseCanonicalKey}:${asset.id.slice(0, 8)}`
+      : baseCanonicalKey;
+
+  const updated = await assets.appendRevision(asset.id, {
+    name: candidate.name,
+    scope: candidate.scope,
+    canonical_key: canonicalKey,
+    content: candidate.content,
+    change_reason: 'Edited in Rule Library.',
+  });
+  await notifyRuleLibraryChanged();
+  return { saved: true, asset: updated } as const;
+}
+
+async function archiveRule(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null || !('assetId' in payload)) {
+    return { archived: false, error: 'Invalid archive request.' } as const;
+  }
+
+  const assetId = payload.assetId;
+  if (typeof assetId !== 'string') {
+    return { archived: false, error: 'Invalid Rule identifier.' } as const;
+  }
+
+  const archived = await assets.archive(assetId);
+  await notifyRuleLibraryChanged();
+  return { archived: true, asset: archived } as const;
 }
 
 export default defineBackground(() => {
@@ -194,6 +308,20 @@ export default defineBackground(() => {
         return saveCandidateRule(message.payload).catch((error: unknown) => ({
           saved: false,
           error: error instanceof Error ? error.message : 'Unable to save the Rule.',
+        }));
+      case 'AIWM_LIST_RULES':
+        return listRules(message.payload);
+      case 'AIWM_GET_RULE_DETAIL':
+        return getRuleDetail(message.payload);
+      case 'AIWM_UPDATE_LIBRARY_RULE':
+        return updateLibraryRule(message.payload).catch((error: unknown) => ({
+          saved: false,
+          error: error instanceof Error ? error.message : 'Unable to update the Rule.',
+        }));
+      case 'AIWM_ARCHIVE_RULE':
+        return archiveRule(message.payload).catch((error: unknown) => ({
+          archived: false,
+          error: error instanceof Error ? error.message : 'Unable to archive the Rule.',
         }));
     }
   });

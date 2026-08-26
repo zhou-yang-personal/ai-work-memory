@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.2`
+`v0.1.3`
 
 This repository currently contains:
 
@@ -16,8 +16,9 @@ This repository currently contains:
 - Phase 2: versioned IndexedDB schema, repository layer, asset revisions, source events, usage events, and unit tests.
 - Phase 3: selection capture, a quiet Save as Rule action on supported AI sites, a browser context-menu fallback, pending-capture inbox, and isolated ChatGPT/Claude/Gemini adapters.
 - Phase 4: reviewed Candidate Rule form, Scope selection, optional local AI evidence, exact similar-Rule detection, Create New, Update Existing, and immutable revisions.
+- Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, and immutable version history.
 
-Library management, retrieval, context composition, and import/export UI are intentionally not implemented yet.
+Retrieval, context composition, and import/export UI are intentionally not implemented yet.
 
 ## Technology
 
@@ -72,6 +73,13 @@ Click the toolbar action to open the side panel.
 - On any page, select text and use the browser context menu **Save selection as Rule**.
 - The side panel opens an editable Candidate Rule. Review its name, scope, and content before choosing **Save Rule**.
 - If the same Rule name and Scope already exist, choose **Update Existing** to append a revision or **Create New** to preserve both Rules.
+
+## Manage saved Rules
+
+- Open **Library** to search active Rules by name, Scope, or current content.
+- Filter the list by Global, Task, Project, or Custom Scope.
+- Open a Rule to inspect its current content and complete revision history.
+- Editing appends a new immutable revision; archiving removes the Rule from the active Library without deleting its stored history.
 
 ## Data and privacy
 
