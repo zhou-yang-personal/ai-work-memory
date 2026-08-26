@@ -2,6 +2,23 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.7] - 2026-08-26
+
+### Added
+
+- Unified `DistillationProvider` interface with availability and correction-distillation contracts.
+- Always-available `ManualFallbackProvider` for editable local Rule candidates.
+- Feature-detected `ChromeBuiltInProvider` using Chrome's on-device Prompt API and constrained JSON output.
+- Optional Candidate Review action for Browser AI suggestions, local model download progress, and explicit review-before-save messaging.
+- Settings status for available, downloadable, downloading, and unavailable Browser AI states.
+- Unit tests for manual candidates, Chrome API absence and structured output, and service-level failure fallback.
+
+### Changed
+
+- Manual Candidate generation now runs through the fallback provider's shared pure function.
+- Browser AI failures leave the current editable draft intact and never block capture or save.
+- Version advanced to `0.1.7` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.6] - 2026-08-26
 
 ### Added

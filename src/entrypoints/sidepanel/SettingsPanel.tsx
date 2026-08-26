@@ -1,6 +1,8 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
+import type { DistillationAvailability } from '../../core/distillation';
 import { APP_VERSION } from '../../core/version';
+import { DistillationService } from '../../services/distillation-service';
 
 interface SettingsPanelProps {
   serviceReady: boolean;
@@ -30,6 +32,19 @@ interface ImportResponse {
   };
 }
 
+const distillationService = new DistillationService();
+
+const browserAiLabels: Record<
+  DistillationAvailability | 'checking',
+  string
+> = {
+  checking: 'Checking…',
+  available: 'Available on device',
+  downloadable: 'Available after local model download',
+  downloading: 'Local model downloading',
+  unavailable: 'Not available; manual fallback active',
+};
+
 function downloadText(filename: string, content: string, type: string): void {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -49,6 +64,19 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const [browserAi, setBrowserAi] = useState<
+    DistillationAvailability | 'checking'
+  >('checking');
+
+  useEffect(() => {
+    let active = true;
+    void distillationService.getBrowserAvailability().then((status) => {
+      if (active) setBrowserAi(status);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const exportFile = async (format: 'json' | 'markdown') => {
     setBusy(true);
@@ -192,9 +220,13 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
           </div>
           <div>
             <dt>Browser AI</dt>
-            <dd>Checking in Phase 9</dd>
+            <dd>{browserAiLabels[browserAi]}</dd>
           </div>
         </dl>
+        <small>
+          Browser AI runs on device and is optional. Rule capture and review always
+          work with the manual fallback.
+        </small>
       </section>
 
       <section>
@@ -213,4 +245,3 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
     </div>
   );
 }
-

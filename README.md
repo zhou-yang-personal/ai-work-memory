@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.6`
+`v0.1.7`
 
 This repository currently contains:
 
@@ -20,8 +20,9 @@ This repository currently contains:
 - Phase 6: deterministic local Rule retrieval with Scope matching, bilingual keyword matching, transparent ranking reasons, and duplicate detection.
 - Phase 7: Build Context workflow for Task and Current Input, explicit Rule inclusion, preview, copy, and local reuse evidence.
 - Phase 8: versioned JSON export/import with atomic safe merge, schema validation, conflict detection, and readable Markdown export.
+- Phase 9: provider-based Rule distillation with an always-available manual fallback and optional Chrome on-device Prompt API enhancement.
 
-Optional on-device Rule distillation is the only remaining V0.1 phase.
+The complete V0.1 `Correction -> Rule -> Reuse` flow is implemented.
 
 ## Technology
 
@@ -100,11 +101,19 @@ Click the toolbar action to open the side panel.
 
 Retrieved, included, excluded, and copied actions are stored only as local Usage Events. Copying an included Rule increments its local reuse count.
 
+## Rule distillation
+
+- Every capture immediately receives an editable manual candidate; no model or API key is required.
+- When Chrome exposes its built-in Prompt API, Candidate Review offers an explicit **Improve with Browser AI** action.
+- The on-device model is only prepared after that user action. A missing API, unsupported language or device, download failure, inference failure, or invalid result falls back safely without blocking Rule capture.
+- Browser AI can suggest a Rule name, content, and Scope, but the UI applies only name and content and always requires review before save.
+
 ## Data and privacy
 
 - Product data is stored locally in IndexedDB under `ai-work-memory`.
 - UI preferences may use extension-local storage.
 - No server, account, cloud sync, analytics upload, or model API is included.
+- Optional Chrome built-in AI inference runs on device. The browser may download its local model after explicit user activation.
 - The content script runs only on ChatGPT, Claude, and Gemini domains. It reads a selection only after a user selects text and activates Save as Rule.
 - Platform adapters may offer a bounded, nearby AI response as optional local evidence. Evidence is discarded unless the user explicitly opts in during review.
 - Captures do not store the page URL by default.
@@ -133,7 +142,7 @@ Export schema version: `1`.
 ```text
 src/
   adapters/              Platform detection and progressive enhancement
-  core/                 Product constants and domain models
+  core/                  Product constants and domain models
   entrypoints/           Background, content script, and side panel
   services/              Extension services such as the capture inbox
   storage/

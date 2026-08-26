@@ -7,6 +7,8 @@ import {
   type CandidateRuleDraft,
   type RuleSaveMode,
 } from '../../core/rules/candidate-rule';
+import type { DistillationAvailability } from '../../core/distillation';
+import { DistillationService } from '../../services/distillation-service';
 
 interface CandidateRuleReviewProps {
   capture: PendingCapture;
@@ -41,6 +43,16 @@ const scopeOptions: Array<{ value: ScopeLevel; label: string }> = [
   { value: 'custom', label: 'Custom' },
 ];
 
+const distillationService = new DistillationService();
+
+function distillationActionLabel(
+  status: DistillationAvailability | 'checking',
+): string {
+  if (status === 'downloadable') return 'Set up Browser AI';
+  if (status === 'downloading') return 'Continue Browser AI setup';
+  return 'Improve with Browser AI';
+}
+
 export function CandidateRuleReview({
   capture,
   onCancel,
@@ -51,7 +63,22 @@ export function CandidateRuleReview({
   );
   const [similarRule, setSimilarRule] = useState<SimilarRule>();
   const [saving, setSaving] = useState(false);
+  const [distilling, setDistilling] = useState(false);
+  const [browserAi, setBrowserAi] = useState<
+    DistillationAvailability | 'checking'
+  >('checking');
+  const [distillationNotice, setDistillationNotice] = useState<string>();
   const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    let active = true;
+    void distillationService.getBrowserAvailability().then((status) => {
+      if (active) setBrowserAi(status);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -107,6 +134,53 @@ export function CandidateRuleReview({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void save('create');
+  };
+
+  const improveWithBrowserAi = async () => {
+    setDistilling(true);
+    setError(undefined);
+    setDistillationNotice(
+      browserAi === 'downloadable' || browserAi === 'downloading'
+        ? 'Preparing the on-device model…'
+        : 'Creating a local suggestion…',
+    );
+
+    try {
+      const result = await distillationService.distillCorrection(
+        { correction: capture.selectedText },
+        {
+          onDownloadProgress: (progress) => {
+            setDistillationNotice(
+              `Downloading the on-device model… ${Math.round(progress * 100)}%`,
+            );
+          },
+        },
+      );
+
+      if (result.usedFallback) {
+        setBrowserAi('unavailable');
+        setDistillationNotice(
+          'Browser AI was unavailable. Your editable manual draft is unchanged.',
+        );
+      } else {
+        setDraft((current) => ({
+          ...current,
+          name: result.candidate.name,
+          content: result.candidate.content,
+        }));
+        setBrowserAi('available');
+        setDistillationNotice(
+          'Browser AI suggested a draft. Review it before saving.',
+        );
+      }
+    } catch {
+      setBrowserAi('unavailable');
+      setDistillationNotice(
+        'Browser AI was unavailable. Your editable manual draft is unchanged.',
+      );
+    } finally {
+      setDistilling(false);
+    }
   };
 
   return (
@@ -170,7 +244,21 @@ export function CandidateRuleReview({
       </div>
 
       <div className="field-group">
-        <label htmlFor="rule-content">Rule Content</label>
+        <div className="distillation-assist">
+          <label htmlFor="rule-content">Rule Content</label>
+          {browserAi !== 'checking' && browserAi !== 'unavailable' && (
+            <button
+              className="text-button"
+              disabled={distilling || saving}
+              onClick={() => void improveWithBrowserAi()}
+              type="button"
+            >
+              {distilling
+                ? 'Working locally…'
+                : distillationActionLabel(browserAi)}
+            </button>
+          )}
+        </div>
         <textarea
           id="rule-content"
           maxLength={12_000}
@@ -179,6 +267,11 @@ export function CandidateRuleReview({
           rows={7}
           value={draft.content}
         />
+        {distillationNotice && (
+          <small className="distillation-note" aria-live="polite">
+            {distillationNotice}
+          </small>
+        )}
       </div>
 
       {capture.aiText && (
@@ -232,4 +325,3 @@ export function CandidateRuleReview({
     </form>
   );
 }
-

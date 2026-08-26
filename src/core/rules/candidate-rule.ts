@@ -6,6 +6,7 @@ import type {
   SourceEvent,
 } from '../assets/types';
 import type { PendingCapture } from '../capture/model';
+import { createManualRuleCandidate } from '../distillation';
 
 export const MAX_RULE_NAME_LENGTH = 120;
 export const MAX_RULE_CONTENT_LENGTH = 12_000;
@@ -113,19 +114,14 @@ export function buildCanonicalKey(rule: NormalizedCandidateRule): string {
 }
 
 export function deriveCandidateRule(capture: PendingCapture): CandidateRuleDraft {
-  const compact = capture.selectedText.replace(/\s+/g, ' ').trim();
-  const firstClause = compact.split(/[。！？.!?;；]/u)[0] ?? compact;
-  const words = firstClause.split(' ').filter(Boolean);
-  const hasSpaces = words.length > 1;
-  const baseName = hasSpaces
-    ? words.slice(0, 7).join(' ')
-    : [...firstClause].slice(0, 28).join('');
-  const name = `${baseName || 'Captured'} Rule`.slice(0, MAX_RULE_NAME_LENGTH);
+  const candidate = createManualRuleCandidate({
+    correction: capture.selectedText,
+  });
 
   return {
-    name,
-    content: capture.selectedText,
-    scopeLevel: 'global',
+    name: candidate.name,
+    content: candidate.content,
+    scopeLevel: candidate.suggestedScope,
     keepAiEvidence: false,
   };
 }
@@ -157,4 +153,3 @@ export function buildCapturedSourceEvent(
       : {}),
   };
 }
-
