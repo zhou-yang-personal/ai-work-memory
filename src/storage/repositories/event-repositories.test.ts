@@ -58,5 +58,41 @@ describe('event repositories', () => {
       { id: 'usage-1', action: 'included' },
     ]);
   });
-});
 
+  it('records context actions and increments reuse only when copied', async () => {
+    const asset = {
+      id: 'asset-1',
+      kind: 'rule' as const,
+      name: 'Evidence Rule',
+      status: 'active' as const,
+      scope: { level: 'global' as const },
+      tags: [],
+      canonical_key: 'global:all:evidence-rule',
+      current_revision_id: 'revision-1',
+      created_at: '2026-08-26T00:00:00.000Z',
+      updated_at: '2026-08-26T00:00:00.000Z',
+      usage_count: 0,
+    };
+    await database.add('assets', asset);
+    const repository = new UsageEventRepository(
+      databaseProvider,
+      () => '2026-08-26T01:00:00.000Z',
+      (() => {
+        let id = 0;
+        return () => `record-${++id}`;
+      })(),
+    );
+
+    await repository.record('context-2', [
+      { assetId: asset.id, action: 'retrieved' },
+      { assetId: asset.id, action: 'included' },
+      { assetId: asset.id, action: 'copied' },
+    ]);
+
+    await expect(repository.listForAsset(asset.id)).resolves.toHaveLength(3);
+    await expect(database.get('assets', asset.id)).resolves.toMatchObject({
+      usage_count: 1,
+      last_used_at: '2026-08-26T01:00:00.000Z',
+    });
+  });
+});

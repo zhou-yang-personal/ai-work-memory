@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { PendingCapture } from '../../core/capture/model';
 import { APP_VERSION } from '../../core/version';
 import { CandidateRuleReview } from './CandidateRuleReview';
+import { BuildContext } from './BuildContext';
 import { RuleLibrary } from './RuleLibrary';
 
 type Page = 'Build Context' | 'Library' | 'Settings';
@@ -105,23 +106,7 @@ export function App() {
           <>
 
         {page === 'Build Context' && (
-          <>
-            <label htmlFor="task">Task</label>
-            <input id="task" placeholder="e.g. Weekly Report" disabled />
-
-            <label htmlFor="current-input">Current Input</label>
-            <textarea
-              id="current-input"
-              placeholder="Paste the latest task material..."
-              rows={9}
-              disabled
-            />
-
-            <p className="phase-note">
-              Capture, reviewed Rule creation, and Library management are ready.
-              Retrieval core is ready; Build Context interaction arrives in Phase 7.
-            </p>
-          </>
+          <BuildContext />
         )}
 
         {page === 'Library' && (

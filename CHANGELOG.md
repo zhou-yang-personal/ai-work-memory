@@ -2,6 +2,23 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.5] - 2026-08-26
+
+### Added
+
+- Build Context form for Task and Current Input.
+- Recommended Rule list with explicit Include and Exclude controls.
+- Visible retrieval scores, Scope labels, and matching reasons.
+- Deterministic Markdown Context Composer with preview and clipboard copy.
+- Local Usage Event recording for retrieved, included, excluded, and copied Rules.
+- Reuse count and last-used timestamp updates when a Rule is copied.
+- Unit tests for context composition, default selection, usage events, and reuse counts.
+
+### Changed
+
+- The default Build Context page is now functional instead of a disabled placeholder.
+- Version advanced to `0.1.5` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.4] - 2026-08-26
 
 ### Added

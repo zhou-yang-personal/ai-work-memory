@@ -1,4 +1,5 @@
 import type { CaptureRequest, PendingCapture } from './model';
+import type { UsageAction } from '../assets/types';
 import type { CandidateRuleDraft, RuleSaveMode } from '../rules/candidate-rule';
 import type { RuleLibraryQuery } from '../rules/rule-library';
 import type { RetrievalInput } from '../rules/retrieval';
@@ -26,7 +27,14 @@ export type ExtensionRequest =
       payload: { assetId: string; draft: CandidateRuleDraft };
     }
   | { type: 'AIWM_ARCHIVE_RULE'; payload: { assetId: string } }
-  | { type: 'AIWM_RETRIEVE_RULES'; payload: RetrievalInput };
+  | { type: 'AIWM_RETRIEVE_RULES'; payload: RetrievalInput }
+  | {
+      type: 'AIWM_RECORD_USAGE';
+      payload: {
+        contextId: string;
+        events: Array<{ assetId: string; action: UsageAction }>;
+      };
+    };
 
 export type ExtensionEvent =
   | {
@@ -53,6 +61,7 @@ export function isExtensionRequest(value: unknown): value is ExtensionRequest {
       'AIWM_UPDATE_LIBRARY_RULE',
       'AIWM_ARCHIVE_RULE',
       'AIWM_RETRIEVE_RULES',
+      'AIWM_RECORD_USAGE',
     ].includes(value.type)
   );
 }

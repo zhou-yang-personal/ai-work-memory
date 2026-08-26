@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.4`
+`v0.1.5`
 
 This repository currently contains:
 
@@ -18,8 +18,9 @@ This repository currently contains:
 - Phase 4: reviewed Candidate Rule form, Scope selection, optional local AI evidence, exact similar-Rule detection, Create New, Update Existing, and immutable revisions.
 - Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, and immutable version history.
 - Phase 6: deterministic local Rule retrieval with Scope matching, bilingual keyword matching, transparent ranking reasons, and duplicate detection.
+- Phase 7: Build Context workflow for Task and Current Input, explicit Rule inclusion, preview, copy, and local reuse evidence.
 
-Build Context composition and import/export UI are intentionally not implemented yet.
+Import/export UI is intentionally not implemented yet.
 
 ## Technology
 
@@ -88,6 +89,15 @@ Click the toolbar action to open the side panel.
 - Ranking combines Scope relevance with keyword coverage across Rule name, Scope, tags, and current content.
 - Each result includes visible matching reasons so Phase 7 can let the user decide which Rules to include.
 - English words and Chinese character bigrams are both supported.
+
+## Build Context
+
+1. Enter the Task and paste the latest Current Input.
+2. Choose **Retrieve Rules** and review every recommendation and matching reason.
+3. Include or exclude Rules explicitly; the extension never injects them automatically.
+4. Preview the deterministic Markdown context, then choose **Copy Context** for use in any AI tool.
+
+Retrieved, included, excluded, and copied actions are stored only as local Usage Events. Copying an included Rule increments its local reuse count.
 
 ## Data and privacy
 

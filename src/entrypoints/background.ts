@@ -34,11 +34,13 @@ import {
   AssetRepository,
   CaptureRuleRepository,
   RevisionRepository,
+  UsageEventRepository,
 } from '../storage/repositories';
 
 const assets = new AssetRepository();
 const revisions = new RevisionRepository();
 const capturedRules = new CaptureRuleRepository();
+const usageEvents = new UsageEventRepository();
 
 async function notifyCaptureChanged(capture?: PendingCapture): Promise<void> {
   const event: ExtensionEvent = {
@@ -272,6 +274,48 @@ async function archiveRule(payload: unknown) {
   return { archived: true, asset: archived } as const;
 }
 
+async function recordUsage(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) {
+    return { recorded: false } as const;
+  }
+
+  const request = payload as Record<string, unknown>;
+  if (
+    typeof request.contextId !== 'string' ||
+    !request.contextId.trim() ||
+    !Array.isArray(request.events)
+  ) {
+    return { recorded: false } as const;
+  }
+
+  const allowedActions = new Set([
+    'retrieved',
+    'included',
+    'excluded',
+    'copied',
+  ]);
+  const events = request.events
+    .slice(0, 50)
+    .filter(
+      (event): event is { assetId: string; action: 'retrieved' | 'included' | 'excluded' | 'copied' } =>
+        typeof event === 'object' &&
+        event !== null &&
+        'assetId' in event &&
+        typeof event.assetId === 'string' &&
+        'action' in event &&
+        typeof event.action === 'string' &&
+        allowedActions.has(event.action),
+    )
+    .map((event) => ({ assetId: event.assetId, action: event.action }));
+
+  if (!events.length) {
+    return { recorded: false } as const;
+  }
+
+  await usageEvents.record(request.contextId.slice(0, 120), events);
+  return { recorded: true } as const;
+}
+
 export default defineBackground(() => {
   browser.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
     // The sidePanel API is Chrome/Edge-specific; feature detection keeps startup safe.
@@ -350,6 +394,8 @@ export default defineBackground(() => {
         }));
       case 'AIWM_RETRIEVE_RULES':
         return retrieveRules(message.payload);
+      case 'AIWM_RECORD_USAGE':
+        return recordUsage(message.payload);
     }
   });
 });
