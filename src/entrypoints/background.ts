@@ -114,6 +114,7 @@ async function buildContextMenuCapture(
   try {
     const enriched = await browser.tabs.sendMessage(tabId, {
       type: READ_ACTIVE_CAPTURE_TYPE,
+      selectedText,
     });
     if (typeof enriched !== 'object' || enriched === null) {
       return fallback;

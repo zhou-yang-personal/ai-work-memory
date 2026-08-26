@@ -4,10 +4,23 @@ import {
   MAX_AI_EVIDENCE_LENGTH,
   MAX_CAPTURE_TEXT_LENGTH,
   MAX_CURRENT_TASK_LENGTH,
+  matchesCapturedSelection,
   normalizeCaptureRequest,
 } from './model';
 
 describe('normalizeCaptureRequest', () => {
+  it('reuses a cached context snapshot only for the same normalized selection', () => {
+    const capture = normalizeCaptureRequest({
+      selectedText: ' Keep   the evidence ',
+      platform: 'chatgpt',
+      channel: 'floating-action',
+      context: { projectName: 'Claro Fiber' },
+    });
+
+    expect(matchesCapturedSelection(capture, 'Keep the evidence')).toBe(true);
+    expect(matchesCapturedSelection(capture, 'Different selection')).toBe(false);
+  });
+
   it('normalizes whitespace and preserves optional evidence', () => {
     expect(
       normalizeCaptureRequest({

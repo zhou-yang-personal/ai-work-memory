@@ -58,6 +58,20 @@ export interface PendingCapture extends CaptureRequest {
   capturedAt: string;
 }
 
+export function matchesCapturedSelection(
+  capture: CaptureRequest | undefined,
+  selectedText: unknown,
+): capture is CaptureRequest {
+  if (!capture) {
+    return false;
+  }
+
+  return (
+    normalizeText(selectedText, MAX_CAPTURE_TEXT_LENGTH) ===
+    normalizeText(capture.selectedText, MAX_CAPTURE_TEXT_LENGTH)
+  );
+}
+
 function normalizeText(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') {
     return '';

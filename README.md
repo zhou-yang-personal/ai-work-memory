@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.8`
+`v0.1.9`
 
 This repository currently contains:
 
@@ -76,7 +76,8 @@ Click the toolbar action to open the side panel.
 
 - On ChatGPT, Claude, or Gemini, select text and choose **Save as Rule** beside the selection.
 - On any page, select text and use the browser context menu **Save selection as Rule**.
-- The side panel opens immediately. On supported AI sites, the extension reads only the visible current Project identity, conversation title, nearest prior user task, and nearby AI response at that explicit moment.
+- The side panel opens immediately. On supported AI sites, the extension snapshots the selection and visible context before the browser context menu can clear the selection, then reads only the current Project identity, conversation title, nearest prior user task, and nearby AI response.
+- ChatGPT Project identity uses the visible Project name when available and a stable URL-derived Project label when the sidebar is hidden or its DOM changes.
 - Candidate Review separates the original Correction, temporary Captured Context, and the proposed Reusable Rule. Detected Project names prefill Project Scope.
 - If Chrome's on-device Prompt API is already available, it automatically proposes a context-aware Rule without overwriting user edits. Otherwise the editable manual candidate remains available.
 - Review the Rule name, Scope, and content before choosing **Save Rule**.

@@ -2,6 +2,23 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.9] - 2026-08-26
+
+### Fixed
+
+- Context-menu capture now snapshots the selected text and bounded page context before Chrome opens the native menu, preventing selection loss from silently dropping Project and task context.
+- Context enrichment validates the cached snapshot against the browser-provided selected text so an older selection cannot be attached to a new Rule.
+- ChatGPT Project detection now uses multiple current-page signals and falls back to a stable URL-derived Project identity when the sidebar name is unavailable.
+- Conversation-title detection now includes the current conversation link used by newer ChatGPT layouts.
+
+### Added
+
+- Unit coverage for cached-selection validation and ChatGPT Project URL identity extraction.
+
+### Changed
+
+- Version advanced to `0.1.9` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.8] - 2026-08-26
 
 ### Added
