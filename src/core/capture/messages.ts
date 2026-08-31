@@ -1,4 +1,4 @@
-import type { CaptureRequest, PendingCapture } from './model';
+import type { PendingCapture, CaptureRequest } from './model';
 import type { UsageAction } from '../assets/types';
 import type { CandidateRuleDraft, RuleSaveMode } from '../rules/candidate-rule';
 import type { RuleLibraryQuery } from '../rules/rule-library';
@@ -28,6 +28,8 @@ export type ExtensionRequest =
       payload: { assetId: string; draft: CandidateRuleDraft };
     }
   | { type: 'AIWM_ARCHIVE_RULE'; payload: { assetId: string } }
+  | { type: 'AIWM_DELETE_RULE'; payload: { assetId: string } }
+  | { type: 'AIWM_IMPORT_RULES'; payload: unknown }
   | { type: 'AIWM_RETRIEVE_RULES'; payload: RetrievalInput }
   | {
       type: 'AIWM_RECORD_USAGE';
@@ -63,6 +65,8 @@ export function isExtensionRequest(value: unknown): value is ExtensionRequest {
       'AIWM_GET_RULE_DETAIL',
       'AIWM_UPDATE_LIBRARY_RULE',
       'AIWM_ARCHIVE_RULE',
+      'AIWM_DELETE_RULE',
+      'AIWM_IMPORT_RULES',
       'AIWM_RETRIEVE_RULES',
       'AIWM_RECORD_USAGE',
       'AIWM_EXPORT_DATA',
