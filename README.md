@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.11`
+`v0.1.12`
 
 This repository currently contains:
 
@@ -16,10 +16,10 @@ This repository currently contains:
 - Phase 2: versioned IndexedDB schema, repository layer, asset revisions, source events, usage events, and unit tests.
 - Phase 3: selection capture, a quiet Save as Rule action on supported AI sites, a browser context-menu fallback, pending-capture inbox, and isolated ChatGPT/Claude/Gemini adapters.
 - Phase 4: reviewed Candidate Rule form, Scope selection, optional local AI evidence, exact similar-Rule detection, Create New, Update Existing, and immutable revisions.
-- Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, and immutable version history.
+- Phase 5: quiet Rule Library with search, Scope filtering, detail view, editing, archiving, permanent deletion, and immutable version history.
 - Phase 6: deterministic local Rule retrieval with Scope matching, bilingual keyword matching, transparent ranking reasons, and duplicate detection.
 - Phase 7: Build Context workflow for Task and Current Input, explicit Rule inclusion, preview, copy, and local reuse evidence.
-- Phase 8: versioned JSON export/import with atomic safe merge, schema validation, conflict detection, and readable Markdown export.
+- Phase 8: versioned JSON backup restore, readable Markdown export, and simplified bulk Rule import.
 - Phase 9: provider-based Rule distillation with an always-available manual fallback and optional Chrome on-device Prompt API enhancement.
 - Capture refinement: immediate side-panel review plus bounded Project, conversation, and current-task context for stronger Rule candidates.
 
@@ -72,7 +72,7 @@ Edge:
 
 Click the toolbar action to open the side panel.
 
-**Important after an update:** when an unpacked extension is reloaded or replaced, refresh any already-open ChatGPT, Claude, or Gemini tabs before using **Save as Rule**. Existing tabs can keep the old content-script instance until the page reloads. v0.1.11 also detects common stale-extension-context failures and shows **Reload page** instead of leaving the capture action stuck indefinitely.
+**Important after an update:** when an unpacked extension is reloaded or replaced, refresh any already-open ChatGPT, Claude, or Gemini tabs before using **Save as Rule**. Existing tabs can keep the old content-script instance until the page reloads. The capture action detects common stale-extension-context failures and shows **Reload page** instead of remaining stuck indefinitely.
 
 ## Capture a correction
 
@@ -93,13 +93,41 @@ Click the toolbar action to open the side panel.
 - Open **Library** to search active Rules by name, Scope, or current content.
 - Filter the list by Global, Task, Project, or Custom Scope.
 - Open a Rule to inspect its current content and complete revision history.
-- Editing appends a new immutable revision; archiving removes the Rule from the active Library without deleting its stored history.
+- **Archive** removes the Rule from the active Library and retrieval while preserving its local history.
+- **Delete permanently** removes the Rule, all of its revisions, its usage events, and source events that are no longer referenced by any other Rule. The action requires a second confirmation.
+
+## Import existing Rules
+
+Settings now separates two different import jobs:
+
+- **Restore Backup** accepts a complete AI Work Memory JSON export with internal IDs, revisions, source events, and usage events. It remains the disaster-recovery / migration path.
+- **Import Rules** accepts a lightweight JSON list for existing knowledge. No internal IDs or revision metadata are required. The import is validated first and written in one local transaction. Existing Rules with the same Rule name and Scope are skipped.
+
+Minimal Rule file:
+
+```json
+[
+  {
+    "name": "Evidence first",
+    "content": "Do not infer unsupported facts."
+  },
+  {
+    "name": "Client deck layout",
+    "content": "Use a 2x2 layout by default.",
+    "scope": "project",
+    "scopeName": "Client Deck",
+    "tags": ["ppt"]
+  }
+]
+```
+
+`scope` may be `global`, `task`, `project`, or `custom`; it defaults to `global`. Non-global Rules require `scopeName`. Up to 500 Rules can be imported at a time.
 
 ## Retrieval model
 
 - Retrieval stays fully local and deterministic; no embedding API, vector database, or model call is used.
 - Ranking combines Scope relevance with keyword coverage across Rule name, Scope, tags, and current content.
-- Each result includes visible matching reasons so Phase 7 can let the user decide which Rules to include.
+- Each result includes visible matching reasons so Build Context can let the user decide which Rules to include.
 - English words and Chinese character bigrams are both supported.
 
 ## Build Context
@@ -134,8 +162,8 @@ Retrieved, included, excluded, and copied actions are stored only as local Usage
 ## Import and export
 
 - Open **Settings** to export a complete, versioned JSON backup or a readable Markdown Rule document.
-- JSON imports validate the schema and every relationship before writing.
-- Existing identical records are skipped. Any ID or Rule-key conflict aborts the complete import, so partial imports are not left behind.
+- Backup restore validates the schema and every relationship before writing.
+- Lightweight Rule import validates each Rule, rejects invalid files before writing, and skips existing same-name + same-Scope Rules.
 - Import and export remain local browser operations; no data is sent to a server.
 
 ## Storage model
