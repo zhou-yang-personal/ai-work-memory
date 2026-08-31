@@ -8,7 +8,7 @@ The V0.1 product hypothesis is deliberately narrow: will a user save a real corr
 
 ## Current version
 
-`v0.1.10`
+`v0.1.11`
 
 This repository currently contains:
 
@@ -72,11 +72,14 @@ Edge:
 
 Click the toolbar action to open the side panel.
 
+**Important after an update:** when an unpacked extension is reloaded or replaced, refresh any already-open ChatGPT, Claude, or Gemini tabs before using **Save as Rule**. Existing tabs can keep the old content-script instance until the page reloads. v0.1.11 also detects common stale-extension-context failures and shows **Reload page** instead of leaving the capture action stuck indefinitely.
+
 ## Capture a correction
 
 - On ChatGPT, Claude, or Gemini, select text and choose **Save as Rule** beside the selection.
 - On any page, select text and use the browser context menu **Save selection as Rule**.
 - **Save as Rule starts Candidate Review; it does not persist a Rule by itself.** The floating action reports **Review ready** once the capture has reached the side panel.
+- The capture request has a bounded timeout. If the extension was reloaded while the AI page stayed open, the action prompts **Reload page** rather than remaining stuck.
 - The side panel opens immediately. On supported AI sites, the extension snapshots the selection and visible context before the browser context menu can clear the selection, then reads only the current Project identity, conversation title, nearest prior user task, and nearby AI response.
 - ChatGPT Project identity uses the visible Project name when available and a stable URL-derived Project label when the sidebar is hidden or its DOM changes.
 - Candidate Review separates the original Correction, temporary Captured Context, and the proposed Reusable Rule. Detected Project names prefill Project Scope.
