@@ -7,6 +7,7 @@ import {
 
 const BUTTON_OFFSET = 10;
 const CONTEXT_SNAPSHOT_TTL_MS = 30_000;
+const CAPTURE_REQUEST_TIMEOUT_MS = 4_000;
 
 function createCaptureButton(onCapture: () => void): {
   element: HTMLDivElement;
@@ -51,6 +52,36 @@ function createCaptureButton(onCapture: () => void): {
   return { element, button };
 }
 
+async function sendCaptureForReview(request: CaptureRequest): Promise<unknown> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      browser.runtime.sendMessage({
+        type: 'AIWM_CAPTURE_SELECTION',
+        payload: request,
+      }),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error('Capture request timed out.')),
+          CAPTURE_REQUEST_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function needsPageReload(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /context invalidated|extension context|receiving end does not exist|message port closed/i.test(
+    message,
+  );
+}
+
 export default defineContentScript({
   matches: [
     'https://chatgpt.com/*',
@@ -86,12 +117,12 @@ export default defineContentScript({
       }
 
       const request = pendingCapture;
-
       button.disabled = true;
       button.textContent = 'Opening review…';
-      browser.runtime
-        .sendMessage({ type: 'AIWM_CAPTURE_SELECTION', payload: request })
-        .then((response: unknown) => {
+
+      void (async () => {
+        try {
+          const response = await sendCaptureForReview(request);
           const acceptedForReview =
             typeof response === 'object' &&
             response !== null &&
@@ -101,17 +132,16 @@ export default defineContentScript({
           // accepted only means the capture reached Candidate Review. A Rule is
           // persisted later, after the user explicitly saves it in the side panel.
           button.textContent = acceptedForReview ? 'Review ready' : 'Try again';
-        })
-        .catch(() => {
-          button.textContent = 'Try again';
-        })
-        .finally(() => {
+        } catch (error) {
+          button.textContent = needsPageReload(error) ? 'Reload page' : 'Try again';
+        } finally {
           hideTimer = setTimeout(() => {
             element.style.display = 'none';
             button.disabled = false;
             button.textContent = 'Save as Rule';
-          }, 900);
-        });
+          }, 1_400);
+        }
+      })();
     });
 
     const positionAction = () => {
