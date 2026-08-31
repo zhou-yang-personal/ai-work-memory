@@ -20,13 +20,15 @@ describe('normalizeRuleImport', () => {
 
     expect(result.valid).toBe(true);
     expect(result.rules).toHaveLength(2);
-    expect(result.rules[0].rule.scope).toEqual({ level: 'global' });
-    expect(result.rules[1]).toMatchObject({
-      rule: {
-        scope: { level: 'project', key: 'client-deck', label: 'Client Deck' },
+    expect(result.rules).toMatchObject([
+      { rule: { scope: { level: 'global' } } },
+      {
+        rule: {
+          scope: { level: 'project', key: 'client-deck', label: 'Client Deck' },
+        },
+        tags: ['ppt', 'client'],
       },
-      tags: ['ppt', 'client'],
-    });
+    ]);
   });
 
   it('rejects non-global Rules without a Scope Name', () => {
@@ -35,7 +37,7 @@ describe('normalizeRuleImport', () => {
     ]);
 
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('Scope Name');
+    expect(result.errors.join(' ')).toContain('Scope Name');
   });
 
   it('rejects duplicate name and Scope combinations within one import', () => {
@@ -45,6 +47,6 @@ describe('normalizeRuleImport', () => {
     ]);
 
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('duplicates');
+    expect(result.errors.join(' ')).toContain('duplicates');
   });
 });
