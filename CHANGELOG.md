@@ -2,6 +2,19 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.11] - 2026-08-31
+
+### Fixed
+
+- The page-level Save as Rule action no longer remains stuck indefinitely when an unpacked extension is reloaded while ChatGPT, Claude, or Gemini stays open.
+- Capture requests now time out after four seconds instead of leaving the action in a permanent in-progress state.
+- Common stale extension-context failures now surface `Reload page`, making the required recovery action explicit.
+
+### Changed
+
+- Installation guidance now explicitly requires refreshing already-open supported AI tabs after reloading or replacing an unpacked extension so the latest content script is injected.
+- Version advanced to `0.1.11` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.10] - 2026-08-31
 
 ### Fixed
