@@ -2,6 +2,21 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.12] - 2026-08-31
+
+### Added
+
+- Permanent Rule deletion from Library detail with a second confirmation step.
+- Transactional cascade cleanup for a deleted Rule's revisions, usage events, and source events that are no longer referenced by another Rule.
+- Lightweight **Import Rules** flow for existing knowledge using a simple JSON array without internal IDs or revision metadata.
+- Bulk Rule import supports Global, Task, Project, and Custom Scope plus optional tags, validates the complete file before writing, and skips existing same-name + same-Scope Rules.
+- Unit coverage for Rule import normalization, atomic bulk creation, and permanent deletion cleanup.
+
+### Changed
+
+- The previous Settings **Import JSON** action is now labeled **Restore Backup** to distinguish full AI Work Memory backup recovery from everyday Rule import.
+- Version advanced to `0.1.12` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.11] - 2026-08-31
 
 ### Fixed
