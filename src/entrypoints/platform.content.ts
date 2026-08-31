@@ -25,7 +25,10 @@ function createCaptureButton(onCapture: () => void): {
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = 'Save as Rule';
-  button.setAttribute('aria-label', 'Save selected text as a reusable rule');
+  button.setAttribute(
+    'aria-label',
+    'Open selected text for review before saving it as a reusable rule',
+  );
   button.style.cssText = [
     'all: initial',
     'box-sizing: border-box',
@@ -85,16 +88,19 @@ export default defineContentScript({
       const request = pendingCapture;
 
       button.disabled = true;
-      button.textContent = 'Saving…';
+      button.textContent = 'Opening review…';
       browser.runtime
         .sendMessage({ type: 'AIWM_CAPTURE_SELECTION', payload: request })
         .then((response: unknown) => {
-          const accepted =
+          const acceptedForReview =
             typeof response === 'object' &&
             response !== null &&
             'accepted' in response &&
             response.accepted === true;
-          button.textContent = accepted ? 'Saved' : 'Try again';
+
+          // accepted only means the capture reached Candidate Review. A Rule is
+          // persisted later, after the user explicitly saves it in the side panel.
+          button.textContent = acceptedForReview ? 'Review ready' : 'Try again';
         })
         .catch(() => {
           button.textContent = 'Try again';
