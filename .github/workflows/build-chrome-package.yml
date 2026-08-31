@@ -1,0 +1,52 @@
+name: Build Chrome Package
+
+on:
+  push:
+    branches:
+      - build-v0.1.11-chrome-package
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build Chrome
+        run: pnpm build:chrome
+
+      - name: Build Edge
+        run: pnpm build:edge
+
+      - name: Package Chrome unpacked extension
+        run: |
+          cd .output/chrome-mv3
+          zip -r ../../ai-work-memory-v0.1.11-chrome-full.zip .
+
+      - name: Upload Chrome package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-work-memory-v0.1.11-chrome-full
+          path: ai-work-memory-v0.1.11-chrome-full.zip
+          if-no-files-found: error
