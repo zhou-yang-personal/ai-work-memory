@@ -16,6 +16,7 @@ import {
   buildCapturedSourceEvent,
   normalizeCandidateRuleDraft,
 } from '../core/rules/candidate-rule';
+import { normalizeRuleImport } from '../core/rules/rule-import';
 import {
   filterRuleLibrary,
   normalizeLibraryQuery,
@@ -70,9 +71,7 @@ async function notifyRuleLibraryChanged(): Promise<void> {
 
 async function acceptCapture(value: unknown): Promise<PendingCapture | undefined> {
   const request = normalizeCaptureRequest(value);
-  if (!request) {
-    return undefined;
-  }
+  if (!request) return undefined;
 
   const capture: PendingCapture = {
     ...request,
@@ -86,10 +85,7 @@ async function acceptCapture(value: unknown): Promise<PendingCapture | undefined
 }
 
 async function openSidePanel(tabId: number | undefined): Promise<void> {
-  if (tabId === undefined) {
-    return;
-  }
-
+  if (tabId === undefined) return;
   await browser.sidePanel?.open({ tabId }).catch(() => {
     // A browser without sidePanel support can still retain the pending capture.
   });
@@ -107,18 +103,14 @@ async function buildContextMenuCapture(
     channel: 'context-menu',
   };
 
-  if (tabId === undefined || platform === 'generic') {
-    return fallback;
-  }
+  if (tabId === undefined || platform === 'generic') return fallback;
 
   try {
     const enriched = await browser.tabs.sendMessage(tabId, {
       type: READ_ACTIVE_CAPTURE_TYPE,
       selectedText,
     });
-    if (typeof enriched !== 'object' || enriched === null) {
-      return fallback;
-    }
+    if (typeof enriched !== 'object' || enriched === null) return fallback;
 
     return (
       normalizeCaptureRequest({
@@ -135,18 +127,14 @@ async function buildContextMenuCapture(
 
 async function findSimilarRule(value: unknown) {
   const candidate = normalizeCandidateRuleDraft(value);
-  if (!candidate) {
-    return { valid: false } as const;
-  }
+  if (!candidate) return { valid: false } as const;
 
   const duplicate = detectDuplicateRules(
     candidate,
     await loadActiveRuleItems(),
     1,
   )[0];
-  if (!duplicate) {
-    return { valid: true } as const;
-  }
+  if (!duplicate) return { valid: true } as const;
 
   return {
     valid: true,
@@ -176,12 +164,10 @@ async function saveCandidateRule(payload: unknown) {
     if (typeof request.existingAssetId !== 'string') {
       return { saved: false, error: 'Choose an existing Rule to update.' } as const;
     }
-
     const existing = await assets.getById(request.existingAssetId);
     if (!existing || existing.status !== 'active' || existing.kind !== 'rule') {
       return { saved: false, error: 'The selected Rule is unavailable.' } as const;
     }
-
     const saved = await capturedRules.update(existing.id, candidate, source);
     await clearPendingCapture();
     await notifyCaptureChanged();
@@ -215,7 +201,6 @@ async function loadActiveRuleItems(): Promise<RuleLibraryItem[]> {
       return currentRevision ? { asset, currentRevision } : undefined;
     }),
   );
-
   return items.filter((item): item is RuleLibraryItem => item !== undefined);
 }
 
@@ -228,39 +213,23 @@ async function listRules(value: unknown): Promise<RuleLibraryItem[]> {
 
 async function retrieveRules(value: unknown) {
   const input = normalizeRetrievalInput(value);
-  if (!input) {
-    return { valid: false, rules: [] } as const;
-  }
-
-  return {
-    valid: true,
-    rules: rankRules(await loadActiveRuleItems(), input),
-  } as const;
+  if (!input) return { valid: false, rules: [] } as const;
+  return { valid: true, rules: rankRules(await loadActiveRuleItems(), input) } as const;
 }
 
 async function getRuleDetail(value: unknown) {
   if (typeof value !== 'object' || value === null || !('assetId' in value)) {
     return undefined;
   }
-
   const assetId = value.assetId;
-  if (typeof assetId !== 'string') {
-    return undefined;
-  }
-
+  if (typeof assetId !== 'string') return undefined;
   const asset = await assets.getById(assetId);
-  if (!asset || asset.kind !== 'rule') {
-    return undefined;
-  }
-
+  if (!asset || asset.kind !== 'rule') return undefined;
   const history = await revisions.listForAsset(asset.id);
   const currentRevision = history.find(
     (revision) => revision.id === asset.current_revision_id,
   );
-  if (!currentRevision) {
-    return undefined;
-  }
-
+  if (!currentRevision) return undefined;
   return { asset, currentRevision, revisions: history };
 }
 
@@ -268,18 +237,15 @@ async function updateLibraryRule(payload: unknown) {
   if (typeof payload !== 'object' || payload === null) {
     return { saved: false, error: 'Invalid Rule update.' } as const;
   }
-
   const request = payload as Record<string, unknown>;
   const candidate = normalizeCandidateRuleDraft(request.draft);
   if (typeof request.assetId !== 'string' || !candidate) {
     return { saved: false, error: 'Complete the Rule name, Scope, and content.' } as const;
   }
-
   const asset = await assets.getById(request.assetId);
   if (!asset || asset.status !== 'active' || asset.kind !== 'rule') {
     return { saved: false, error: 'This Rule is no longer available.' } as const;
   }
-
   const baseCanonicalKey = buildCanonicalKey(candidate);
   const duplicate = await assets.findByCanonicalKey(baseCanonicalKey);
   if (duplicate && duplicate.id !== asset.id && duplicate.status === 'active') {
@@ -288,12 +254,10 @@ async function updateLibraryRule(payload: unknown) {
       error: 'Another active Rule already uses this name and Scope.',
     } as const;
   }
-
   const canonicalKey =
     duplicate && duplicate.id !== asset.id
       ? `${baseCanonicalKey}:${asset.id.slice(0, 8)}`
       : baseCanonicalKey;
-
   const updated = await assets.appendRevision(asset.id, {
     name: candidate.name,
     scope: candidate.scope,
@@ -309,22 +273,63 @@ async function archiveRule(payload: unknown) {
   if (typeof payload !== 'object' || payload === null || !('assetId' in payload)) {
     return { archived: false, error: 'Invalid archive request.' } as const;
   }
-
   const assetId = payload.assetId;
   if (typeof assetId !== 'string') {
     return { archived: false, error: 'Invalid Rule identifier.' } as const;
   }
-
   const archived = await assets.archive(assetId);
   await notifyRuleLibraryChanged();
   return { archived: true, asset: archived } as const;
 }
 
-async function recordUsage(payload: unknown) {
-  if (typeof payload !== 'object' || payload === null) {
-    return { recorded: false } as const;
+async function deleteRule(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null || !('assetId' in payload)) {
+    return { deleted: false, error: 'Invalid delete request.' } as const;
+  }
+  const assetId = payload.assetId;
+  if (typeof assetId !== 'string') {
+    return { deleted: false, error: 'Invalid Rule identifier.' } as const;
+  }
+  const asset = await assets.getById(assetId);
+  if (!asset || asset.kind !== 'rule') {
+    return { deleted: false, error: 'This Rule is no longer available.' } as const;
+  }
+  const counts = await assets.deletePermanently(assetId);
+  await notifyRuleLibraryChanged();
+  return { deleted: true, counts } as const;
+}
+
+async function importRules(value: unknown) {
+  const validation = normalizeRuleImport(value);
+  if (!validation.valid) {
+    return { imported: false, errors: validation.errors } as const;
   }
 
+  const existingChecks = await Promise.all(
+    validation.rules.map((item) => assets.findByCanonicalKey(item.canonicalKey)),
+  );
+  const pending = validation.rules.filter((_, index) => !existingChecks[index]);
+  const skipped = validation.rules.length - pending.length;
+  const created = await assets.createRules(
+    pending.map((item) => ({
+      name: item.rule.name,
+      scope: item.rule.scope,
+      content: item.rule.content,
+      canonical_key: item.canonicalKey,
+      tags: item.tags,
+      change_reason: 'Imported from Rule file.',
+    })),
+  );
+  if (created.length) await notifyRuleLibraryChanged();
+  return {
+    imported: true,
+    errors: [],
+    counts: { created: created.length, skipped },
+  } as const;
+}
+
+async function recordUsage(payload: unknown) {
+  if (typeof payload !== 'object' || payload === null) return { recorded: false } as const;
   const request = payload as Record<string, unknown>;
   if (
     typeof request.contextId !== 'string' ||
@@ -333,13 +338,7 @@ async function recordUsage(payload: unknown) {
   ) {
     return { recorded: false } as const;
   }
-
-  const allowedActions = new Set([
-    'retrieved',
-    'included',
-    'excluded',
-    'copied',
-  ]);
+  const allowedActions = new Set(['retrieved', 'included', 'excluded', 'copied']);
   const events = request.events
     .slice(0, 50)
     .filter(
@@ -353,11 +352,7 @@ async function recordUsage(payload: unknown) {
         allowedActions.has(event.action),
     )
     .map((event) => ({ assetId: event.assetId, action: event.action }));
-
-  if (!events.length) {
-    return { recorded: false } as const;
-  }
-
+  if (!events.length) return { recorded: false } as const;
   await usageEvents.record(request.contextId.slice(0, 120), events);
   return { recorded: true } as const;
 }
@@ -386,7 +381,6 @@ async function importData(value: unknown) {
   if (!validation.valid || !validation.bundle) {
     return { imported: false, errors: validation.errors } as const;
   }
-
   const counts = await dataTransfer.merge(validation.bundle);
   await notifyRuleLibraryChanged();
   return { imported: true, counts, errors: [] } as const;
@@ -411,11 +405,7 @@ export default defineBackground(() => {
   });
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId !== CAPTURE_CONTEXT_MENU_ID || !info.selectionText) {
-      return;
-    }
-
-    // sidePanel.open must stay in the direct user-gesture call stack.
+    if (info.menuItemId !== CAPTURE_CONTEXT_MENU_ID || !info.selectionText) return;
     void openSidePanel(tab?.id);
     void buildContextMenuCapture(info.selectionText, tab?.id, tab?.url).then(
       acceptCapture,
@@ -423,15 +413,12 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((message: unknown, sender) => {
-    if (!isExtensionRequest(message)) {
-      return undefined;
-    }
+    if (!isExtensionRequest(message)) return undefined;
 
     switch (message.type) {
       case 'AIWM_HEALTH_CHECK':
         return Promise.resolve({ source: 'background', version: APP_VERSION });
       case 'AIWM_CAPTURE_SELECTION':
-        // Open first; capture persistence and context normalization may be async.
         void openSidePanel(sender.tab?.id);
         return acceptCapture(message.payload).then((capture) => ({
           accepted: Boolean(capture),
@@ -464,6 +451,16 @@ export default defineBackground(() => {
         return archiveRule(message.payload).catch((error: unknown) => ({
           archived: false,
           error: error instanceof Error ? error.message : 'Unable to archive the Rule.',
+        }));
+      case 'AIWM_DELETE_RULE':
+        return deleteRule(message.payload).catch((error: unknown) => ({
+          deleted: false,
+          error: error instanceof Error ? error.message : 'Unable to delete the Rule.',
+        }));
+      case 'AIWM_IMPORT_RULES':
+        return importRules(message.payload).catch((error: unknown) => ({
+          imported: false,
+          errors: [error instanceof Error ? error.message : 'Unable to import Rules.'],
         }));
       case 'AIWM_RETRIEVE_RULES':
         return retrieveRules(message.payload);
