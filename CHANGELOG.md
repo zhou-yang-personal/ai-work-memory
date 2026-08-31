@@ -2,6 +2,21 @@
 
 All notable changes to AI Work Memory are documented here.
 
+## [0.1.10] - 2026-08-31
+
+### Fixed
+
+- Pending Candidate Review no longer blocks the Library or Settings navigation.
+- The side-panel header now reflects the active first-level page instead of showing `Save as Rule` globally whenever a pending capture exists.
+- Candidate Review remains mounted while visiting Library or Settings, preserving the in-progress Rule draft and local AI state until the user returns.
+- Clearing a pending capture no longer forces the user away from the page they are currently viewing; only a newly received capture brings the side panel back to Build Context.
+- The page-level Save as Rule action no longer reports `Saved` when a selection has only been accepted into Candidate Review. It now reports `Review ready`; persistence still requires an explicit Save Rule, Create New, or Update Existing action.
+
+### Changed
+
+- Capture action accessibility text and README documentation now distinguish pending review state from a persisted Rule.
+- Version advanced to `0.1.10` across the manifest source, package metadata, UI, README, and changelog.
+
 ## [0.1.9] - 2026-08-26
 
 ### Fixed
