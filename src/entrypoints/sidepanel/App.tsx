@@ -16,6 +16,8 @@ export function App() {
   const [serviceReady, setServiceReady] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<PendingCapture>();
   const [saveNotice, setSaveNotice] = useState<string>();
+  const isBuildContext = page === 'Build Context';
+  const isReviewingCapture = isBuildContext && Boolean(pendingCapture);
 
   useEffect(() => {
     browser.runtime
@@ -42,12 +44,15 @@ export function App() {
         'type' in message &&
         message.type === 'AIWM_PENDING_CAPTURE_CHANGED'
       ) {
-        setPage('Build Context');
-        setPendingCapture(
+        const nextCapture =
           'payload' in message
             ? (message.payload as PendingCapture | undefined)
-            : undefined,
-        );
+            : undefined;
+
+        setPendingCapture(nextCapture);
+        if (nextCapture) {
+          setPage('Build Context');
+        }
       }
     };
 
@@ -71,7 +76,7 @@ export function App() {
       <header className="app-header">
         <div>
           <p className="eyebrow">AI Work Memory</p>
-          <h1>{pendingCapture ? 'Save as Rule' : page}</h1>
+          <h1>{isReviewingCapture ? 'Save as Rule' : page}</h1>
         </div>
         <span className="version">v{APP_VERSION}</span>
       </header>
@@ -81,7 +86,10 @@ export function App() {
           <button
             className={item === page ? 'nav-item active' : 'nav-item'}
             key={item}
-            onClick={() => setPage(item)}
+            onClick={() => {
+              setSaveNotice(undefined);
+              setPage(item);
+            }}
             type="button"
           >
             {item}
@@ -90,31 +98,29 @@ export function App() {
       </nav>
 
       <section className="workspace">
-        {saveNotice && !pendingCapture && (
+        {saveNotice && !isReviewingCapture && (
           <p className="save-notice" aria-live="polite">
             {saveNotice}
           </p>
         )}
 
-        {pendingCapture ? (
-          <CandidateRuleReview
-            capture={pendingCapture}
-            key={pendingCapture.id}
-            onCancel={clearCapture}
-            onSaved={handleRuleSaved}
-          />
-        ) : (
-          <>
-            {page === 'Build Context' && <BuildContext />}
+        <div hidden={!isBuildContext || !pendingCapture}>
+          {pendingCapture && (
+            <CandidateRuleReview
+              capture={pendingCapture}
+              key={pendingCapture.id}
+              onCancel={clearCapture}
+              onSaved={handleRuleSaved}
+            />
+          )}
+        </div>
 
-            {page === 'Library' && (
-              <RuleLibrary onNotice={setSaveNotice} />
-            )}
+        {isBuildContext && !pendingCapture && <BuildContext />}
 
-            {page === 'Settings' && (
-              <SettingsPanel serviceReady={serviceReady} />
-            )}
-          </>
+        {page === 'Library' && <RuleLibrary onNotice={setSaveNotice} />}
+
+        {page === 'Settings' && (
+          <SettingsPanel serviceReady={serviceReady} />
         )}
       </section>
     </main>
