@@ -35,9 +35,30 @@ jobs:
         run: |
           cd .output/chrome-mv3
           zip -r ../../ai-work-memory-v0.1.12-chrome-full.zip .
+      - name: Package source patch
+        run: |
+          mkdir -p patch/src/core/rules patch/src/storage/repositories patch/src/core/capture patch/src/entrypoints/sidepanel patch/src/entrypoints patch/src/core
+          cp src/core/rules/rule-import.ts patch/src/core/rules/
+          cp src/core/rules/rule-import.test.ts patch/src/core/rules/
+          cp src/storage/repositories/asset-repository.ts patch/src/storage/repositories/
+          cp src/storage/repositories/asset-repository.test.ts patch/src/storage/repositories/
+          cp src/core/capture/messages.ts patch/src/core/capture/
+          cp src/entrypoints/background.ts patch/src/entrypoints/
+          cp src/entrypoints/sidepanel/RuleLibrary.tsx patch/src/entrypoints/sidepanel/
+          cp src/entrypoints/sidepanel/SettingsPanel.tsx patch/src/entrypoints/sidepanel/
+          cp src/core/version.ts patch/src/core/
+          cp package.json README.md CHANGELOG.md patch/
+          cd patch
+          zip -r ../ai-work-memory-v0.1.12-patch.zip .
       - name: Upload Chrome package
         uses: actions/upload-artifact@v4
         with:
           name: ai-work-memory-v0.1.12-chrome-full
           path: ai-work-memory-v0.1.12-chrome-full.zip
+          if-no-files-found: error
+      - name: Upload source patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-work-memory-v0.1.12-patch
+          path: ai-work-memory-v0.1.12-patch.zip
           if-no-files-found: error
