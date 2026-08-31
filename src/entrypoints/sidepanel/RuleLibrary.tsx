@@ -22,6 +22,11 @@ interface ArchiveResponse {
   error?: string;
 }
 
+interface DeleteResponse {
+  deleted: boolean;
+  error?: string;
+}
+
 const scopeOptions: Array<{ value: RuleScopeFilter; label: string }> = [
   { value: 'all', label: 'All scopes' },
   { value: 'global', label: 'Global' },
@@ -35,9 +40,7 @@ function draftFromDetail(detail: RuleDetail): CandidateRuleDraft {
     name: detail.asset.name,
     content: detail.currentRevision.content,
     scopeLevel: detail.asset.scope.level,
-    ...(detail.asset.scope.label
-      ? { scopeLabel: detail.asset.scope.label }
-      : {}),
+    ...(detail.asset.scope.label ? { scopeLabel: detail.asset.scope.label } : {}),
     keepAiEvidence: false,
   };
 }
@@ -59,6 +62,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
   const [draft, setDraft] = useState<CandidateRuleDraft>();
   const [editing, setEditing] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -68,15 +72,11 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
     const timer = setTimeout(() => {
       setLoading(true);
       browser.runtime
-        .sendMessage({
-          type: 'AIWM_LIST_RULES',
-          payload: { query, scopeLevel },
-        })
+        .sendMessage({ type: 'AIWM_LIST_RULES', payload: { query, scopeLevel } })
         .then((response: RuleLibraryItem[]) => setItems(response))
         .catch(() => setError('Unable to load the local Rule Library.'))
         .finally(() => setLoading(false));
     }, 180);
-
     return () => clearTimeout(timer);
   }, [query, scopeLevel, refreshToken]);
 
@@ -91,7 +91,6 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
         setRefreshToken((value) => value + 1);
       }
     };
-
     browser.runtime.onMessage.addListener(handleLibraryChanged);
     return () => browser.runtime.onMessage.removeListener(handleLibraryChanged);
   }, []);
@@ -102,12 +101,8 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
       setDraft(undefined);
       return;
     }
-
     browser.runtime
-      .sendMessage({
-        type: 'AIWM_GET_RULE_DETAIL',
-        payload: { assetId: selectedId },
-      })
+      .sendMessage({ type: 'AIWM_GET_RULE_DETAIL', payload: { assetId: selectedId } })
       .then((response: RuleDetail | undefined) => {
         setDetail(response);
         setDraft(response ? draftFromDetail(response) : undefined);
@@ -125,10 +120,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
 
   const saveEdit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!detail || !draft) {
-      return;
-    }
-
+    if (!detail || !draft) return;
     setSaving(true);
     setError(undefined);
     try {
@@ -140,7 +132,6 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
         setError(response.error ?? 'Unable to update this Rule.');
         return;
       }
-
       setEditing(false);
       setRefreshToken((value) => value + 1);
       onNotice('Rule updated with a new revision.');
@@ -152,10 +143,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
   };
 
   const archive = async () => {
-    if (!detail) {
-      return;
-    }
-
+    if (!detail) return;
     setSaving(true);
     setError(undefined);
     try {
@@ -167,13 +155,36 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
         setError(response.error ?? 'Unable to archive this Rule.');
         return;
       }
-
       setSelectedId(undefined);
       setArchiveConfirm(false);
       setRefreshToken((value) => value + 1);
       onNotice('Rule archived.');
     } catch {
       setError('Background service unavailable. The Rule was not archived.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deletePermanently = async () => {
+    if (!detail) return;
+    setSaving(true);
+    setError(undefined);
+    try {
+      const response = (await browser.runtime.sendMessage({
+        type: 'AIWM_DELETE_RULE',
+        payload: { assetId: detail.asset.id },
+      })) as DeleteResponse;
+      if (!response.deleted) {
+        setError(response.error ?? 'Unable to delete this Rule.');
+        return;
+      }
+      setSelectedId(undefined);
+      setDeleteConfirm(false);
+      setRefreshToken((value) => value + 1);
+      onNotice('Rule permanently deleted.');
+    } catch {
+      setError('Background service unavailable. The Rule was not deleted.');
     } finally {
       setSaving(false);
     }
@@ -188,6 +199,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
             setSelectedId(undefined);
             setEditing(false);
             setArchiveConfirm(false);
+            setDeleteConfirm(false);
             setError(undefined);
           }}
           type="button"
@@ -207,7 +219,6 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
                 value={draft.name}
               />
             </div>
-
             <div className="scope-row">
               <div className="field-group">
                 <label htmlFor="library-scope-level">Scope</label>
@@ -231,16 +242,13 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
                   <input
                     id="library-scope-label"
                     maxLength={120}
-                    onChange={(event) =>
-                      updateDraft('scopeLabel', event.target.value)
-                    }
+                    onChange={(event) => updateDraft('scopeLabel', event.target.value)}
                     required
                     value={draft.scopeLabel ?? ''}
                   />
                 </div>
               )}
             </div>
-
             <div className="field-group">
               <label htmlFor="library-rule-content">Rule Content</label>
               <textarea
@@ -252,7 +260,6 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
                 value={draft.content}
               />
             </div>
-
             {error && <p className="form-error">{error}</p>}
             <div className="form-actions">
               <button
@@ -275,30 +282,23 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
           <>
             <header className="rule-detail-header">
               <div>
-                <span className="scope-badge">
-                  {detail.asset.scope.label ?? 'Global'}
-                </span>
+                <span className="scope-badge">{detail.asset.scope.label ?? 'Global'}</span>
                 <h2>{detail.asset.name}</h2>
               </div>
-              <span className="revision-badge">
-                v{detail.currentRevision.version}
-              </span>
+              <span className="revision-badge">v{detail.currentRevision.version}</span>
             </header>
-
             <div className="rule-full-content">{detail.currentRevision.content}</div>
-
             <div className="detail-actions">
-              <button
-                className="secondary-button"
-                onClick={() => setEditing(true)}
-                type="button"
-              >
+              <button className="secondary-button" onClick={() => setEditing(true)} type="button">
                 Edit Rule
               </button>
               {!archiveConfirm ? (
                 <button
                   className="archive-button"
-                  onClick={() => setArchiveConfirm(true)}
+                  onClick={() => {
+                    setDeleteConfirm(false);
+                    setArchiveConfirm(true);
+                  }}
                   type="button"
                 >
                   Archive
@@ -306,18 +306,30 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
               ) : (
                 <div className="archive-confirm">
                   <span>Archive this Rule?</span>
-                  <button onClick={() => setArchiveConfirm(false)} type="button">
-                    Keep
-                  </button>
-                  <button disabled={saving} onClick={() => void archive()} type="button">
-                    Archive
-                  </button>
+                  <button onClick={() => setArchiveConfirm(false)} type="button">Keep</button>
+                  <button disabled={saving} onClick={() => void archive()} type="button">Archive</button>
+                </div>
+              )}
+              {!deleteConfirm ? (
+                <button
+                  className="archive-button"
+                  onClick={() => {
+                    setArchiveConfirm(false);
+                    setDeleteConfirm(true);
+                  }}
+                  type="button"
+                >
+                  Delete permanently
+                </button>
+              ) : (
+                <div className="archive-confirm">
+                  <span>Delete Rule and history?</span>
+                  <button onClick={() => setDeleteConfirm(false)} type="button">Keep</button>
+                  <button disabled={saving} onClick={() => void deletePermanently()} type="button">Delete</button>
                 </div>
               )}
             </div>
-
             {error && <p className="form-error">{error}</p>}
-
             <section className="history-section">
               <h3>Version History</h3>
               <ol>
@@ -351,19 +363,14 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
         />
         <select
           aria-label="Filter by Scope"
-          onChange={(event) =>
-            setScopeLevel(event.target.value as RuleScopeFilter)
-          }
+          onChange={(event) => setScopeLevel(event.target.value as RuleScopeFilter)}
           value={scopeLevel}
         >
           {scopeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </div>
-
       {error && <p className="form-error">{error}</p>}
       {loading ? (
         <p className="empty-state">Loading Rules…</p>
@@ -371,7 +378,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
         <p className="empty-state">
           {query || scopeLevel !== 'all'
             ? 'No Rules match this search.'
-            : 'No Rules saved yet. Capture a correction to create the first one.'}
+            : 'No Rules saved yet. Capture a correction or import existing Rules.'}
         </p>
       ) : (
         <ul className="rule-list">
@@ -384,8 +391,7 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
                 </div>
                 <p>{item.currentRevision.content}</p>
                 <small>
-                  {item.asset.scope.label ?? 'Global'} · Updated{' '}
-                  {formatDate(item.asset.updated_at)}
+                  {item.asset.scope.label ?? 'Global'} · Updated {formatDate(item.asset.updated_at)}
                 </small>
               </button>
             </li>
@@ -395,4 +401,3 @@ export function RuleLibrary({ onNotice }: RuleLibraryProps) {
     </section>
   );
 }
-
