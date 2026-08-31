@@ -32,12 +32,18 @@ interface ImportResponse {
   };
 }
 
+interface RuleImportResponse {
+  imported: boolean;
+  errors: string[];
+  counts?: {
+    created: number;
+    skipped: number;
+  };
+}
+
 const distillationService = new DistillationService();
 
-const browserAiLabels: Record<
-  DistillationAvailability | 'checking',
-  string
-> = {
+const browserAiLabels: Record<DistillationAvailability | 'checking', string> = {
   checking: 'Checking…',
   available: 'Available on device',
   downloadable: 'Available after local model download',
@@ -60,13 +66,12 @@ function dateStamp(): string {
 }
 
 export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
-  const importInput = useRef<HTMLInputElement>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
+  const ruleImportInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
-  const [browserAi, setBrowserAi] = useState<
-    DistillationAvailability | 'checking'
-  >('checking');
+  const [browserAi, setBrowserAi] = useState<DistillationAvailability | 'checking'>('checking');
 
   useEffect(() => {
     let active = true;
@@ -90,23 +95,12 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
         setError('Unable to export local data.');
         return;
       }
-
       if (format === 'json') {
-        downloadText(
-          `ai-work-memory-${dateStamp()}.json`,
-          response.json,
-          'application/json',
-        );
+        downloadText(`ai-work-memory-${dateStamp()}.json`, response.json, 'application/json');
       } else {
-        downloadText(
-          `ai-work-memory-${dateStamp()}.md`,
-          response.markdown,
-          'text/markdown',
-        );
+        downloadText(`ai-work-memory-${dateStamp()}.md`, response.markdown, 'text/markdown');
       }
-      setNotice(
-        `Exported ${response.counts.assets} Rules and ${response.counts.revisions} revisions.`,
-      );
+      setNotice(`Exported ${response.counts.assets} Rules and ${response.counts.revisions} revisions.`);
     } catch {
       setError('Background service unavailable.');
     } finally {
@@ -114,13 +108,10 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
     }
   };
 
-  const importJson = async (event: ChangeEvent<HTMLInputElement>) => {
+  const restoreBackup = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) {
-      return;
-    }
-
+    if (!file) return;
     setBusy(true);
     setNotice(undefined);
     setError(undefined);
@@ -131,18 +122,48 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
         payload: parsed,
       })) as ImportResponse;
       if (!response.imported || !response.counts) {
-        setError(response.errors.join(' ') || 'Import validation failed.');
+        setError(response.errors.join(' ') || 'Backup validation failed.');
         return;
       }
-
       setNotice(
-        `Imported ${response.counts.assets} Rules and ${response.counts.revisions} revisions; skipped ${response.counts.skipped} existing records.`,
+        `Restored ${response.counts.assets} Rules and ${response.counts.revisions} revisions; skipped ${response.counts.skipped} existing records.`,
       );
     } catch (caught) {
       setError(
         caught instanceof SyntaxError
-          ? 'The selected file is not valid JSON.'
-          : 'Unable to import this file.',
+          ? 'The selected backup is not valid JSON.'
+          : 'Unable to restore this backup.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const importRules = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    setNotice(undefined);
+    setError(undefined);
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const response = (await browser.runtime.sendMessage({
+        type: 'AIWM_IMPORT_RULES',
+        payload: parsed,
+      })) as RuleImportResponse;
+      if (!response.imported || !response.counts) {
+        setError(response.errors.join(' ') || 'Rule import validation failed.');
+        return;
+      }
+      setNotice(
+        `Imported ${response.counts.created} Rules; skipped ${response.counts.skipped} existing Rules with the same name and Scope.`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof SyntaxError
+          ? 'The selected Rule file is not valid JSON.'
+          : 'Unable to import these Rules.',
       );
     } finally {
       setBusy(false);
@@ -155,39 +176,44 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
         <h2>Data</h2>
         <p>Portable, versioned exports remain entirely under your control.</p>
         <div className="settings-actions">
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => void exportFile('json')}
-            type="button"
-          >
+          <button className="secondary-button" disabled={busy} onClick={() => void exportFile('json')} type="button">
             Export JSON
           </button>
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => void exportFile('markdown')}
-            type="button"
-          >
+          <button className="secondary-button" disabled={busy} onClick={() => void exportFile('markdown')} type="button">
             Export Markdown
           </button>
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => importInput.current?.click()}
-            type="button"
-          >
-            Import JSON
+          <button className="secondary-button" disabled={busy} onClick={() => backupInput.current?.click()} type="button">
+            Restore Backup
           </button>
           <input
             accept="application/json,.json"
             className="hidden-file-input"
-            onChange={(event) => void importJson(event)}
-            ref={importInput}
+            onChange={(event) => void restoreBackup(event)}
+            ref={backupInput}
             type="file"
           />
         </div>
-        <small>Imports use safe merge and stop completely on conflicts.</small>
+        <small>Backup restore expects a full AI Work Memory JSON export and uses atomic safe merge.</small>
+      </section>
+
+      <section>
+        <h2>Import Existing Rules</h2>
+        <p>Bulk-add existing knowledge without internal IDs or revision metadata.</p>
+        <div className="settings-actions">
+          <button className="secondary-button" disabled={busy} onClick={() => ruleImportInput.current?.click()} type="button">
+            Import Rules
+          </button>
+          <input
+            accept="application/json,.json"
+            className="hidden-file-input"
+            onChange={(event) => void importRules(event)}
+            ref={ruleImportInput}
+            type="file"
+          />
+        </div>
+        <small>
+          JSON array format: name and content are required; scope defaults to global. For project/task/custom Rules, add scope and scopeName. Existing same-name + same-Scope Rules are skipped.
+        </small>
       </section>
 
       {notice && <p className="save-notice">{notice}</p>}
@@ -196,54 +222,29 @@ export function SettingsPanel({ serviceReady }: SettingsPanelProps) {
       <section>
         <h2>Privacy</h2>
         <dl className="settings-list">
-          <div>
-            <dt>Page URL</dt>
-            <dd>Not stored</dd>
-          </div>
-          <div>
-            <dt>Nearby AI response</dt>
-            <dd>Explicit opt-in per Rule</dd>
-          </div>
-          <div>
-            <dt>Project / task context</dt>
-            <dd>Read on Save · temporary</dd>
-          </div>
-          <div>
-            <dt>Cloud transfer</dt>
-            <dd>None</dd>
-          </div>
+          <div><dt>Page URL</dt><dd>Not stored</dd></div>
+          <div><dt>Nearby AI response</dt><dd>Explicit opt-in per Rule</dd></div>
+          <div><dt>Project / task context</dt><dd>Read on Save · temporary</dd></div>
+          <div><dt>Cloud transfer</dt><dd>None</dd></div>
         </dl>
       </section>
 
       <section>
         <h2>AI Distillation</h2>
         <dl className="settings-list">
-          <div>
-            <dt>Manual fallback</dt>
-            <dd>Available</dd>
-          </div>
-          <div>
-            <dt>Browser AI</dt>
-            <dd>{browserAiLabels[browserAi]}</dd>
-          </div>
+          <div><dt>Manual fallback</dt><dd>Available</dd></div>
+          <div><dt>Browser AI</dt><dd>{browserAiLabels[browserAi]}</dd></div>
         </dl>
         <small>
-          Browser AI runs on device and is optional. Rule capture and review always
-          work with the manual fallback.
+          Browser AI runs on device and is optional. Rule capture and review always work with the manual fallback.
         </small>
       </section>
 
       <section>
         <h2>About</h2>
         <dl className="settings-list">
-          <div>
-            <dt>Background service</dt>
-            <dd>{serviceReady ? 'Ready' : 'Unavailable'}</dd>
-          </div>
-          <div>
-            <dt>Version</dt>
-            <dd>{APP_VERSION}</dd>
-          </div>
+          <div><dt>Background service</dt><dd>{serviceReady ? 'Ready' : 'Unavailable'}</dd></div>
+          <div><dt>Version</dt><dd>{APP_VERSION}</dd></div>
         </dl>
       </section>
     </div>
