@@ -53,6 +53,31 @@ describe('AssetRepository', () => {
     ]);
   });
 
+  it('creates multiple imported Rules in one transaction', async () => {
+    const assets = new AssetRepository(databaseProvider, clock, idFactory);
+
+    const created = await assets.createRules([
+      {
+        name: 'First Rule',
+        scope: { level: 'global' },
+        canonical_key: 'global:all:first-rule',
+        content: 'First content',
+        change_reason: 'Imported from Rule file.',
+      },
+      {
+        name: 'Second Rule',
+        scope: { level: 'project', key: 'deck', label: 'Deck' },
+        canonical_key: 'project:deck:second-rule',
+        content: 'Second content',
+        tags: ['ppt'],
+        change_reason: 'Imported from Rule file.',
+      },
+    ]);
+
+    expect(created).toHaveLength(2);
+    await expect(assets.listActive()).resolves.toHaveLength(2);
+  });
+
   it('updates a rule by appending a revision while preserving the asset id', async () => {
     const assets = new AssetRepository(databaseProvider, clock, idFactory);
     const revisions = new RevisionRepository(databaseProvider);
@@ -122,5 +147,39 @@ describe('AssetRepository', () => {
 
     expect(archived.status).toBe('archived');
     await expect(assets.listActive()).resolves.toEqual([]);
+  });
+
+  it('permanently deletes the Rule and all dependent local records', async () => {
+    const assets = new AssetRepository(databaseProvider, clock, idFactory);
+    const asset = await assets.createRule({
+      name: 'Disposable Rule',
+      scope: { level: 'global' },
+      canonical_key: 'global:all:disposable-rule',
+      content: 'Temporary content',
+      source_event_ids: ['source-1'],
+    });
+    await database.put('source_events', {
+      id: 'source-1',
+      event_type: 'manual',
+      platform: 'generic',
+      user_text: 'Imported evidence',
+      captured_at: '2026-08-23T00:00:00.000Z',
+      retention_mode: 'minimal',
+    });
+    await database.put('usage_events', {
+      id: 'usage-1',
+      asset_id: asset.id,
+      action: 'copied',
+      context_id: 'context-1',
+      created_at: '2026-08-23T00:00:01.000Z',
+    });
+
+    const result = await assets.deletePermanently(asset.id);
+
+    expect(result).toMatchObject({ revisions: 1, sourceEvents: 1, usageEvents: 1 });
+    await expect(database.get('assets', asset.id)).resolves.toBeUndefined();
+    await expect(database.get('asset_revisions', asset.current_revision_id)).resolves.toBeUndefined();
+    await expect(database.get('source_events', 'source-1')).resolves.toBeUndefined();
+    await expect(database.get('usage_events', 'usage-1')).resolves.toBeUndefined();
   });
 });
